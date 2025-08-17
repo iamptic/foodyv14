@@ -44,6 +44,10 @@
     qs('#editQty').value = o?.qty_total ?? '';
     qs('#editExpires').value = o?.expires_at ? String(o.expires_at).slice(0,16).replace('T',' ') : '';
     qs('#editCategory').value = o?.category ?? '';
+    const iu = qs('#editImageUrl'); const ip = qs('#editImagePreview');
+    if (iu){ iu.value = o?.image_url || o?.imageUrl || ''; }
+    if (ip){ const src = iu?.value || ''; if (src){ ip.src = src; ip.style.display='block'; } else { ip.style.display='none'; } }
+
     qs('#editDesc').value = o?.description ?? '';
     m.style.display = 'block';
   };
@@ -56,12 +60,16 @@
     const body = JSON.stringify(payload);
     const bodyWithId = JSON.stringify({ id, restaurant_id: rid(), ...payload });
     const chain = [
+      // PUT/PATCH preferred variants
       { url: `${base}/api/v1/merchant/offers/${id}?restaurant_id=${R}`, init:{ method:'PUT', headers, body } },
       { url: `${base}/api/v1/merchant/offers/${id}`,                init:{ method:'PUT', headers, body } },
       { url: `${base}/api/v1/merchant/offers`,                      init:{ method:'PUT', headers, body: bodyWithId } },
       { url: `${base}/api/v1/merchant/offers/${id}?restaurant_id=${R}`, init:{ method:'PATCH', headers, body } },
       { url: `${base}/api/v1/merchant/offers`,                      init:{ method:'PATCH', headers, body: bodyWithId } },
-    ];
+          // POST compatibility fallbacks
+      ,{ url: `${base}/api/v1/merchant/offers/update`, init:{ method:'POST', headers, body: bodyWithId } }
+      ,{ url: `${base}/api/v1/merchant/offer/update`, init:{ method:'POST', headers, body: bodyWithId } }
+      ];
     let last=null;
     for (const opt of chain){
       try{ const r = await fetch(opt.url, opt.init); if (r.ok) return; last=r.status; if (r.status===404||r.status===405) continue; throw new Error('HTTP '+r.status); }catch(e){ last=e.message; }
@@ -73,11 +81,15 @@
     const base = apiBase().replace(/\/+$/,''); const R = encodeURIComponent(rid());
     const headers = { 'X-Foody-Key': key(), 'Content-Type': 'application/json' };
     const chain = [
+      // PUT/PATCH preferred variants
       { url: `${base}/api/v1/merchant/offers/${id}?restaurant_id=${R}`, init:{ method:'DELETE', headers } },
       { url: `${base}/api/v1/merchant/offers/${id}`,                init:{ method:'DELETE', headers } },
       { url: `${base}/api/v1/merchant/offers?id=${encodeURIComponent(id)}&restaurant_id=${R}`, init:{ method:'DELETE', headers } },
       { url: `${base}/api/v1/merchant/offers`,                      init:{ method:'DELETE', headers, body: JSON.stringify({ id, restaurant_id: rid() }) } },
-    ];
+          // POST compatibility fallbacks
+      ,{ url: `${base}/api/v1/merchant/offers/update`, init:{ method:'POST', headers, body: bodyWithId } }
+      ,{ url: `${base}/api/v1/merchant/offer/update`, init:{ method:'POST', headers, body: bodyWithId } }
+      ];
     let last=null;
     for (const opt of chain){
       try{ const r = await fetch(opt.url, opt.init); if (r.ok) return; last=r.status; if (r.status===404||r.status===405) continue; throw new Error('HTTP '+r.status); }catch(e){ last=e.message; }
@@ -102,7 +114,15 @@
     });
   }
 
-  function bindEditForm(){
+  
+  function onImageUrlInput(){
+    const iu = qs('#editImageUrl'); const ip = qs('#editImagePreview');
+    if (!iu || !ip) return;
+    const v = iu.value.trim();
+    if (v){ ip.src = v; ip.style.display = 'block'; }
+    else { ip.removeAttribute('src'); ip.style.display = 'none'; }
+  }
+function bindEditForm(){
     const form = qs('#offerEditForm'); if(!form) return;
     form.addEventListener('submit', async (ev)=>{
       ev.preventDefault();
@@ -115,6 +135,7 @@
         expires_at: isoFromLocal(qs('#editExpires').value) || null,
         category: qs('#editCategory').value || null,
         description: qs('#editDesc').value || null,
+        image_url: (qs('#editImageUrl') && qs('#editImageUrl').value) ? qs('#editImageUrl').value.trim() : null,
       };
       try{ await updateOffer(id, payload); closeEdit(); try{ await window.load?.(); }catch(_){ } }catch(err){ alert('Не удалось сохранить: '+(err?.message||err)); }
     });
@@ -123,5 +144,5 @@
 
   // Re-augment UI after each render() from app.js
   const mo = new MutationObserver(()=>{ ensureActionsUI(); });
-  ready(function(){ ensureActionsUI(); bindActions(); bindEditForm(); const list = qs('#offerList'); if (list) mo.observe(list, { childList:true, subtree:true }); });
+  ready(function(){ ensureActionsUI(); bindActions(); bindEditForm(); const list = qs('#offerList'); if (list) mo.observe(list, { childList:true, subtree:true }); const iu = qs('#editImageUrl'); if (iu) iu.addEventListener('input', onImageUrlInput); });
 })();

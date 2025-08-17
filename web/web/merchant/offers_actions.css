@@ -72,3 +72,12 @@
 @media (max-width: 560px){
   #offers #offerList .row { grid-template-columns: 1.6fr .8fr .7fr .8fr 1fr minmax(110px, max-content); }
 }
+
+
+/* Thumbnails in offers table */
+#offers #offerList .row { align-items: center; }
+#offers #offerList .row .thumb { width: 64px; height: 48px; border-radius: 10px; overflow: hidden; background: #111; }
+#offers #offerList .row .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@media (max-width: 560px){
+  #offers #offerList .row .thumb { width: 56px; height: 42px; }
+}

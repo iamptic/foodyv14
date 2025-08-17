@@ -561,32 +561,10 @@ function bindExpirePresets(){
 +`        <div class="actions"><button class="btn" data-action="edit-offer">Редактировать</button><button class="btn btn-ghost" data-action="delete-offer">Удалить</button></div>`
 +`      </div>`;
     }).join('');
-    const head = `<div class="row head"><div>Название</div><div>Цена</div><div>Скидка</div><div>Остаток</div><div>До</div><div>Действия</div></div>`;
+    const head = `<div class="row head"><div>Фото</div><div>Название</div><div>Цена</div><div>Скидка</div><div>Остаток</div><div>До</div><div>Действия</div></div>`;
     window.__offersCache = items; window.__offersCache = items; root.innerHTML = head + rows;
-    // bind delete (delegated)
-    if (!root.dataset.actBound){
-      root.dataset.actBound = '1';
-      root.addEventListener('click', async (e) => {
-        const btn = e.target.closest('[data-action="delete"]'); if (!btn) return;
-        const row = el.closest('.row'); const id = row && row.getAttribute('data-offer-id'); if (!id) return;
-        if (action==='edit'){ try{ const list = window.__offersCache||[]; const o = list.find(x=>String(x.id)===String(id)); if (o && window.openEdit) window.openEdit(o); }catch(_){} return; } if (action==='edit'){ try{ const o=(window.__offersCache||[]).find(x=>String(x.id)===String(id)); if (o && window.openEdit) window.openEdit(o);}catch(_){} return; } if (action==='edit'){ const id = row.getAttribute('data-offer-id'); try{ const o=(window.__offersCache||[]).find(x=>String(x.id)===String(id)); if (o&&window.openEdit) window.openEdit(o);}catch(_){ } return; } if (!confirm('Удалить оффер?')) return;
-        try {
-          // robust delete with fallbacks
-          {
-            const base = API.replace(/\/+$/,'') + '/api/v1/merchant';
-            const rid = encodeURIComponent(state.rid || localStorage.getItem('foody_restaurant_id') || '');
-            const chain = [
-              `${base}/offers/${id}?restaurant_id=${rid}`,
-              `${base}/offers/${id}`
-            ];
-            let ok=false, last=null;
-            for (const url of chain){
-              try{
-                const r = await fetch(url, { method:'DELETE', headers:{ 'X-Foody-Key': localStorage.getItem('foody_key')||'' } });
-                if (r.ok){ ok=true; break; } last = r.status;
-              }catch(e){ last=e; }
-            }
-            if (!ok) throw new Error(last||'delete failed');
+      // actions handled by overlay script
+if (!ok) throw new Error(last||'delete failed');
           }
           row.remove();
           try { refreshDashboard && refreshDashboard(); } catch(_){}
