@@ -50,7 +50,7 @@ rHTML = '';
     $('#sheet').classList.remove('hidden');
 
     if (tg && tg.MainButton){
-      tg.MainButton.setParams({text:'Забронировать', is_active:true, is_visible:true});
+      tg.MainButton.hide(); // reserve endpoint отсутствует на бэке
       const handler = async ()=>{
         try{
           const resp = await fetch(API+'/api/v1/public/reserve', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ offer_id: o.id||o.offer_id, name: (tg.initDataUnsafe?.user?.first_name||'TG'), phone:'' }) });
