@@ -7,9 +7,3 @@
 .filepond--item-panel{border-radius:12px;}
 .filepond--file-info{font-size:12px;}
 .filepond--image-preview{border-radius:12px;overflow:hidden;}
-
-
-/* --- Preview block (fallback) --- */
-.photo-preview { margin-top: 10px; }
-.photo-preview img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover;
-  border-radius: 12px; border: 1px solid var(--border); background: #0d1218; display: block; }
