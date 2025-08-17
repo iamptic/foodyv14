@@ -79,6 +79,6 @@ rHTML = '';
   const toastBox = document.getElementById('toast');
   const toast = (m)=>{ const el=document.createElement('div'); el.className='toast'; el.textContent=m; toastBox.appendChild(el); setTimeout(()=>el.remove(),3200); };
 
-  async function load(){ try{ $('#gridSkeleton').classList.remove('hidden'); offers = await fetch(API+'/public/offers').then(r=>r.json()).catch(()=>[]); } finally { $('#gridSkeleton').classList.add('hidden'); } render(); }
+  async function load(){ try{ $('#gridSkeleton').classList.remove('hidden'); try{ offers = await fetch(API+'/api/v1/public/offers').then(r=>r.json()); } catch(_){ offers = await fetch(API+'/public/offers').then(r=>r.json()).catch(()=>[]); } } finally { $('#gridSkeleton').classList.add('hidden'); } render(); }
   load();
 })();

@@ -571,7 +571,7 @@ function bindExpirePresets(){
         const row = btn.closest('.row'); const id = row && row.getAttribute('data-offer-id'); if (!id) return;
         if (!confirm('Удалить оффер?')) return;
         try {
-          await api(`/api/v1/merchant/offers/${id}`, { method: 'DELETE' });
+          await api(`/api/v1/merchant/offers/${id}?restaurant_id=${encodeURIComponent(state.rid)}`, { method: 'DELETE' });
           row.remove();
           try { refreshDashboard && refreshDashboard(); } catch(_){}
           showToast('Оффер удалён');

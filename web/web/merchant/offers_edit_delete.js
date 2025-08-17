@@ -73,7 +73,25 @@
       if(act==='delete-offer'){
         if(!confirm('Удалить оффер «'+(item.title||'')+'»?')) return;
         try{
-          const res = await fetch(apiBase().replace(/\/+$/,'') + '/api/v1/merchant/offers/'+id + '?restaurant_id=' + encodeURIComponent(rid()), {
+          let __ok=false, __err=null;
+async function updateOfferChain(list){
+  for (const opt of list){
+    try{
+      const r = await fetch(opt.url, opt.init);
+      if (r.ok) { __ok = true; return r; }
+      __err = r; if (r.status===404 || r.status===405) continue; // попробуем следующую схему
+      return r; // другие ошибки — выходим
+    }catch(e){ __err=e; }
+  }
+  if (__err) throw __err; throw new Error('update failed');
+}
+const __base = apiBase().replace(/\/+$/,''); const __rid = encodeURIComponent(rid());
+const res = await updateOfferChain([
+  { url: `${__base}/api/v1/merchant/offers/${id}?restaurant_id=${__rid}`, init: { method:'PUT', headers:{ 'Content-Type':'application/json', 'X-Foody-Key': key() }, body: JSON.stringify(payload) } },
+  { url: `${__base}/api/v1/merchant/offers/${id}`, init: { method:'PUT', headers:{ 'Content-Type':'application/json', 'X-Foody-Key': key() }, body: JSON.stringify(payload) } },
+  { url: `${__base}/api/v1/merchant/offers/${id}?restaurant_id=${__rid}`, init: { method:'PATCH', headers:{ 'Content-Type':'application/json', 'X-Foody-Key': key() }, body: JSON.stringify(payload) } },
+  { url: `${__base}/api/v1/merchant/offers`, init: { method:'PUT', headers:{ 'Content-Type':'application/json', 'X-Foody-Key': key() }, body: JSON.stringify({ id, ...payload }) } }
+]);
             method:'DELETE', headers:{ 'X-Foody-Key': key() }
           });
           if(!res.ok) throw new Error('HTTP '+res.status);
@@ -99,7 +117,25 @@
         description: qs('#editDesc').value || null,
       };
       try{
-        const res = await fetch(apiBase().replace(/\/+$/,'') + '/api/v1/merchant/offers/'+id + '?restaurant_id=' + encodeURIComponent(rid()), {
+        let __ok=false, __err=null;
+async function updateOfferChain(list){
+  for (const opt of list){
+    try{
+      const r = await fetch(opt.url, opt.init);
+      if (r.ok) { __ok = true; return r; }
+      __err = r; if (r.status===404 || r.status===405) continue; // попробуем следующую схему
+      return r; // другие ошибки — выходим
+    }catch(e){ __err=e; }
+  }
+  if (__err) throw __err; throw new Error('update failed');
+}
+const __base = apiBase().replace(/\/+$/,''); const __rid = encodeURIComponent(rid());
+const res = await updateOfferChain([
+  { url: `${__base}/api/v1/merchant/offers/${id}?restaurant_id=${__rid}`, init: { method:'PUT', headers:{ 'Content-Type':'application/json', 'X-Foody-Key': key() }, body: JSON.stringify(payload) } },
+  { url: `${__base}/api/v1/merchant/offers/${id}`, init: { method:'PUT', headers:{ 'Content-Type':'application/json', 'X-Foody-Key': key() }, body: JSON.stringify(payload) } },
+  { url: `${__base}/api/v1/merchant/offers/${id}?restaurant_id=${__rid}`, init: { method:'PATCH', headers:{ 'Content-Type':'application/json', 'X-Foody-Key': key() }, body: JSON.stringify(payload) } },
+  { url: `${__base}/api/v1/merchant/offers`, init: { method:'PUT', headers:{ 'Content-Type':'application/json', 'X-Foody-Key': key() }, body: JSON.stringify({ id, ...payload }) } }
+]);
           method:'PUT',
           headers: { 'Content-Type':'application/json', 'X-Foody-Key': key() },
           body: JSON.stringify(payload)
