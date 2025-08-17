@@ -1,8 +1,0 @@
-
-/* foody.photo.css — minimal, safe styling */
-.filepond--root{border-radius:14px;background:rgba(255,255,255,.03);border:1px dashed rgba(255,255,255,.18)}
-.filepond--root:focus-within{border-color:rgba(0,194,122,.6);box-shadow:0 0 0 4px rgba(0,194,122,.15)}
-.filepond--drop-label{font-size:14px;opacity:.85}
-.filepond--credits{display:none!important}
-.foody-hint.ok{color:#00C27A;font-weight:600}
-.foody-hint.err{color:#ff7b7b;font-weight:600}
