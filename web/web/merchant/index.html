@@ -216,7 +216,23 @@
       </div>
 
       <!-- 4) Новая цена (после скидки) -->
-      <label>Новая цена
+      
+      <!-- Скидка (чипсы + % как при создании) -->
+      <div class="full">
+        <div class="work-presets" id="editDiscountPresets">
+          <span class="chip" data-discount="30">-30%</span>
+          <span class="chip" data-discount="40">-40%</span>
+          <span class="chip" data-discount="50">-50%</span>
+          <span class="chip" data-discount="60">-60%</span>
+          <span class="chip" data-discount="70">-70%</span>
+          <span class="chip" data-discount="80">-80%</span>
+          <span class="chip" data-discount="90">-90%</span>
+        </div>
+      </div>
+      <label>Скидка, %
+        <input id="editDiscountPercent" type="number" min="0" max="99" step="1" inputmode="numeric" placeholder="например, 50">
+      </label>
+<label>Новая цена
         <input name="price" id="offerPrice" type="number" min="0" step="1" placeholder="например, 190" required>
       </label>
 
@@ -232,7 +248,13 @@
       </label>
 
       <!-- Срок действия оффера -->
-      <label class="full">Срок действия оффера
+      
+      <!-- Срок годности продукта (контроль как при создании) -->
+      <label class="full">Срок годности продукта
+        <input id="editBestBefore" type="datetime-local" placeholder="до какого времени продукт ок">
+        <div class="muted small">Контрольное поле: не отправляется в API, но ограничивает «Срок действия».</div>
+      </label>
+<label class="full">Срок действия оффера оффера
         <input name="expires_at" id="expires_at" placeholder="Сегодня 21:00" required>
       </label>
       <div class="full">
@@ -258,6 +280,9 @@
         <label for="offerImage">Фото (опционально)</label>
         <input type="file" id="offerImage" name="offerImage" accept="image/*">
         <input type="hidden" id="offerImageUrl" name="image_url">
+        <div id="photoPreviewWrap" class="photo-preview hidden">
+          <img id="photoPreview" alt="Превью фото">
+        </div>
         <p class="hint">Поддерживаются JPG/PNG/WebP до 5 МБ</p>
       </div>
 
@@ -430,7 +455,7 @@
       <label>Количество, шт
         <input name="qty_total" id="editQty" type="number" min="1" step="1">
       </label>
-      <label class="full">Срок действия
+      <label class="full">Срок действия оффера
         <input name="expires_at" id="editExpires" placeholder="YYYY-MM-DD HH:MM">
       </label>
       <label class="full">Категория
