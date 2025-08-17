@@ -34,3 +34,12 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:14px/
 .desc{color:var(--sub);margin-top:8px}
 #toast{position:fixed;right:12px;bottom:16px;display:grid;gap:8px;z-index:60}
 .toast{background:#0f141c;border:1px solid var(--brd);border-left:6px solid var(--accent2);padding:10px 12px;border-radius:12px}
+
+/* Skeleton cards for loading */
+.grid.skeleton .card{height:220px; border:1px solid var(--brd); border-radius:16px; background:linear-gradient(90deg,#111722,#141b26,#111722); background-size:200% 100%; animation:shimmer 1.3s linear infinite;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.hidden{display:none}
+.muted{color:var(--sub)}
+
+/* time-left badge tweaks inside card */
+.badge.left{border-color:rgba(255,255,255,.15); color:var(--sub);}
