@@ -31,7 +31,37 @@
     return h;
   }
   function initOn(input){
-    if(!input || input._pond || typeof FilePond==='undefined') return;
+    if (!input) return;
+    // Fallback if FilePond is not available: show local preview in our block
+    if (typeof FilePond === 'undefined') {
+      if (!input._fallbackBound) {
+        input.addEventListener('change', function(){
+          try {
+            var file = input.files && input.files[0]; if (!file) return;
+            var url = (window.URL||window.webkitURL).createObjectURL(file);
+            var wrap = document.getElementById('photoPreviewWrap');
+            var img = document.getElementById('photoPreview');
+            if (wrap && img) { img.src = url; wrap.classList.remove('hidden'); }
+          } catch(_){}
+        });
+        input._fallbackBound = true;
+      }
+      return;
+    }
+    if (input._pond) return;
+    if(!input) return;
+    if (typeof FilePond==='undefined') {
+      // Fallback: show local preview without FilePond
+      input.addEventListener('change', function(){
+        try{ var file = input.files && input.files[0]; if(!file) return;
+          var url = (window.URL||window.webkitURL).createObjectURL(file);
+          var wrap = document.getElementById('photoPreviewWrap'); var img = document.getElementById('photoPreview');
+          if (wrap && img){ img.src = url; wrap.classList.remove('hidden'); }
+        }catch(_){}
+      }, { once:true });
+      return;
+    }
+    if (input._pond) return;
     var hidden = hiddenUrlFor(input);
     try {
       if (window.FilePondPluginImagePreview) FilePond.registerPlugin(FilePondPluginImagePreview);
@@ -56,6 +86,9 @@
         var r = await fetch(base.replace(/\/+$/,'') + '/upload', { method:'POST', body: fd });
         if (!r.ok) throw new Error('Upload failed ' + r.status);
         var j = await r.json(); hidden.value = (j && (j.url || j.Location || j.location)) || '';
+        var wrap = document.getElementById('photoPreviewWrap');
+        var img = document.getElementById('photoPreview');
+        var url = hidden.value; if (wrap && img && url){ img.src = url; wrap.classList.remove('hidden'); }
       } catch(e){ console.warn('upload failed', e); hidden.value=''; try{pond.removeFile();}catch(_){}} }
     pond.on('addfile', function(err, item){ if(!err && item && item.file) upload(item.file);});
     pond.on('removefile', function(){ hidden.value=''; });
