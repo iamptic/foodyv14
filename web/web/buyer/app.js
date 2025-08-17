@@ -4,7 +4,14 @@
   const API = (window.__FOODY__&&window.__FOODY__.FOODY_API)||"https://foodyback-production.up.railway.app";
 
   let offers=[];
-  const grid = $('#grid'), q = $('#q');
+  const grid = $('#grid')
+  function authHeaders(){
+    try{
+      const key = localStorage.getItem('foody_key') || '';
+      return key ? { 'X-Foody-Key': key } : {};
+    }catch(_){ return {}; }
+  }
+, q = $('#q');
 
   function render(){
     grid.inne
