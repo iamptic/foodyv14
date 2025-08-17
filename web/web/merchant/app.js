@@ -756,6 +756,27 @@ on('#offerForm','submit', async (e) => {
   if (ex) payload.expires_at = dtLocalToIso(ex) || ex;
   const bb = trim(fd.get('best_before'));
   if (bb) payload.best_before = dtLocalToIso(bb) || bb;
+  
+  // --- VALIDATE: expires_at must not exceed best_before ---
+  {
+    const parseLocal = (s)=>{
+      if (!s) return null;
+      try {
+        const parts = s.includes('T') ? s.split('T') : s.split(' ');
+        const [Y,M,D] = parts[0].split('-').map(x=>parseInt(x,10));
+        const [h,m] = (parts[1]||'00:00').split(':').map(x=>parseInt(x,10));
+        return new Date(Y, (M-1), D, h||0, m||0, 0, 0);
+      } catch(_) { return null; }
+    };
+    const dEx = parseLocal(ex);
+    const dBb = parseLocal(bb);
+    if (dEx && dBb && dEx.getTime() > dBb.getTime()){
+      showInlineError('#offerError','Срок действия оффера не может превышать срок годности продукта');
+      return; // abort submit
+    }
+  }
+;
+
 
   if (!payload.title) { showInlineError('#offerError','Укажите название'); return; }
   if (!(payload.qty_total > 0)) { showInlineError('#offerError','Количество должно быть больше 0'); return; }
@@ -784,5 +805,20 @@ const ok = gate();
     try { if (ok) { refreshDashboard(); } } catch(_) {}
 if (!ok) activateTab('auth');
     } catch(e){ console.error(e); const a = document.getElementById('auth'); if (a) { a.classList.add('active'); } }
+  });
+})();
+
+
+// Foody patch: make "Сохранить оффер" button full width (failsafe)
+(function(){
+  const onReady = (fn)=>{ if (document.readyState==='complete' || document.readyState==='interactive') setTimeout(fn,0);
+                          else document.addEventListener('DOMContentLoaded', fn); };
+  onReady(()=>{
+    try {
+      const form = document.getElementById('offerForm');
+      if (!form) return;
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn){ btn.classList.add('full'); btn.style.width='100%'; btn.style.display='block'; }
+    } catch(_){}
   });
 })();
