@@ -562,14 +562,14 @@ function bindExpirePresets(){
       </div>`;
     }).join('');
     const head = `<div class="row head"><div>Название</div><div>Цена</div><div>Скидка</div><div>Остаток</div><div>До</div><div>Действия</div></div>`;
-    window.__offersCache = items; root.innerHTML = head + rows;
+    window.__offersCache = items; window.__offersCache = items; root.innerHTML = head + rows;
     // bind delete (delegated)
     if (!root.dataset.actBound){
       root.dataset.actBound = '1';
       root.addEventListener('click', async (e) => {
         const btn = e.target.closest('[data-action="delete"]'); if (!btn) return;
         const row = el.closest('.row'); const id = row && row.getAttribute('data-offer-id'); if (!id) return;
-        if (action==='edit'){ try{ const list = window.__offersCache||[]; const o = list.find(x=>String(x.id)===String(id)); if (o && window.openEdit) window.openEdit(o); }catch(_){} return; } if (!confirm('Удалить оффер?')) return;
+        if (action==='edit'){ try{ const list = window.__offersCache||[]; const o = list.find(x=>String(x.id)===String(id)); if (o && window.openEdit) window.openEdit(o); }catch(_){} return; } if (action==='edit'){ try{ const o=(window.__offersCache||[]).find(x=>String(x.id)===String(id)); if (o && window.openEdit) window.openEdit(o);}catch(_){} return; } if (!confirm('Удалить оффер?')) return;
         try {
           // robust delete with fallbacks
           {

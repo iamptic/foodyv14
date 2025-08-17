@@ -82,3 +82,49 @@ rHTML = '';
   async function load(){ try{ $('#gridSkeleton').classList.remove('hidden'); try{ offers = await fetch(API+'/api/v1/public/offers').then(r=>r.json()); } catch(_){ offers = await fetch(API+'/public/offers').then(r=>r.json()).catch(()=>[]); } } finally { $('#gridSkeleton').classList.add('hidden'); } render(); }
   load();
 })();
+
+async function loadPublicOrMerchant(){
+  // 1) публичный каталог
+  try{
+    const r = await fetch(API+'/api/v1/public/offers');
+    if (r.ok){ offers = await r.json(); if (Array.isArray(offers) && offers.length) return; }
+  }catch(_){}
+  try{
+    const r = await fetch(API+'/public/offers');
+    if (r.ok){ offers = await r.json(); if (Array.isArray(offers) && offers.length) return; }
+  }catch(_){}
+  // 2) общий список по /merchant/offers (если доступен)
+  try{
+    const r = await fetch(API+'/api/v1/merchant/offers');
+    if (r.ok){ const data = await r.json();
+      const list = (data && (data.items||data.results)) ? (data.items||data.results) : (Array.isArray(data)?data:[]);
+      if (list.length){
+        offers = list.map(o => ({
+          id: o.id, title: o.title,
+          price: o.price, original_price: o.original_price || o.originalPrice || null,
+          qty_left: o.qty_left ?? o.qtyLeft ?? o.qty_total ?? 0,
+          expires_at: o.expires_at || o.expiresAt,
+          image_url: o.image_url || o.imageUrl || ''
+        }));
+        return;
+      }
+    }
+  }catch(_){}
+  // 3) фолбэк: офферы конкретного ресторана из ?rid= или localStorage
+  const rid = (new URLSearchParams(location.search).get('rid')) || localStorage.getItem('foody_restaurant_id');
+  if (!rid){ offers = []; return; }
+  try{
+    const r = await fetch(API+'/api/v1/merchant/offers?restaurant_id='+encodeURIComponent(rid));
+    if (r.ok){
+      const data = await r.json();
+      const list = (data && (data.items||data.results)) ? (data.items||data.results) : (Array.isArray(data)?data:[]);
+      offers = list.map(o => ({
+        id: o.id, title: o.title,
+        price: o.price, original_price: o.original_price || o.originalPrice || null,
+        qty_left: o.qty_left ?? o.qtyLeft ?? o.qty_total ?? 0,
+        expires_at: o.expires_at || o.expiresAt,
+        image_url: o.image_url || o.imageUrl || ''
+      }));
+    } else { offers = []; }
+  }catch(_){ offers = []; }
+}
