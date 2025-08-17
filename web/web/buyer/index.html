@@ -27,18 +27,46 @@
 
     <section id="status" class="status" aria-live="polite"></section>
 
-    <section id="offers" class="grid" aria-busy="true">
-      <!-- сюда рендерятся карточки -->
-    </section>
+    <section id="offers" class="grid" aria-busy="true"></section>
   </main>
 
   <footer class="site-footer">
     <small>© Foody, 2025</small>
   </footer>
 
+  <!-- Modal -->
+  <div id="modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__sheet" role="document">
+      <button class="modal__close" type="button" title="Закрыть" data-close>✕</button>
+      <h3 class="modal__title">Бронирование</h3>
+      <p class="modal__subtitle">Покажите этот код на точке</p>
+
+      <div class="modal__qr-wrap">
+        <!-- если доступен внешний сервис QR — используем картинку; иначе покажем только код -->
+        <img id="qrImg" class="modal__qr" alt="QR код" />
+        <div id="qrFallback" class="modal__code"></div>
+      </div>
+
+      <div class="modal__meta">
+        <div><span class="muted">Оффер #</span> <span id="mOfferId">—</span></div>
+        <div><span class="muted">Действительно до</span> <span id="mExpires">—</span></div>
+      </div>
+
+      <div class="modal__actions">
+        <button id="copyBtn" class="btn">Скопировать код</button>
+        <button class="btn btn-secondary" data-close>Готово</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // Можно переопределить через window.FOODY_API из index.html, если нужно
+    // Можно переопределить из HTML при встраивании:
     window.FOODY_API = window.FOODY_API || "https://foodyback-production.up.railway.app";
+    // Можно задать собственный сервис генерации QR (PNG по URL):
+    // Пример: (payload => `https://.../qr?data=${encodeURIComponent(payload)}`)
+    window.QR_URL_BUILDER = window.QR_URL_BUILDER || (payload =>
+      `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(payload)}`);
   </script>
   <script src="./app.js"></script>
 </body>
