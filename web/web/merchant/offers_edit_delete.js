@@ -56,12 +56,15 @@
     const body = JSON.stringify(payload);
     const bodyWithId = JSON.stringify({ id, restaurant_id: rid(), ...payload });
     const chain = [
+      // Preferred detail routes
       { url: `${base}/api/v1/merchant/offers/${id}?restaurant_id=${R}`, init:{ method:'PUT', headers, body } },
       { url: `${base}/api/v1/merchant/offers/${id}`,                init:{ method:'PUT', headers, body } },
       { url: `${base}/api/v1/merchant/offers`,                      init:{ method:'PUT', headers, body: bodyWithId } },
       { url: `${base}/api/v1/merchant/offers/${id}?restaurant_id=${R}`, init:{ method:'PATCH', headers, body } },
       { url: `${base}/api/v1/merchant/offers`,                      init:{ method:'PATCH', headers, body: bodyWithId } },
-    ];
+      ,{ url: `${base}/api/v1/merchant/offers/update`, init:{ method:'POST', headers, body: bodyWithId } }
+  ,{ url: `${base}/api/v1/merchant/offer/update`,  init:{ method:'POST', headers, body: bodyWithId } }
+];
     let last=null;
     for (const opt of chain){
       try{ const r = await fetch(opt.url, opt.init); if (r.ok) return; last=r.status; if (r.status===404||r.status===405) continue; throw new Error('HTTP '+r.status); }catch(e){ last=e.message; }
@@ -73,11 +76,14 @@
     const base = apiBase().replace(/\/+$/,''); const R = encodeURIComponent(rid());
     const headers = { 'X-Foody-Key': key(), 'Content-Type': 'application/json' };
     const chain = [
+      // Preferred detail routes
       { url: `${base}/api/v1/merchant/offers/${id}?restaurant_id=${R}`, init:{ method:'DELETE', headers } },
       { url: `${base}/api/v1/merchant/offers/${id}`,                init:{ method:'DELETE', headers } },
       { url: `${base}/api/v1/merchant/offers?id=${encodeURIComponent(id)}&restaurant_id=${R}`, init:{ method:'DELETE', headers } },
       { url: `${base}/api/v1/merchant/offers`,                      init:{ method:'DELETE', headers, body: JSON.stringify({ id, restaurant_id: rid() }) } },
-    ];
+      ,{ url: `${base}/api/v1/merchant/offers/update`, init:{ method:'POST', headers, body: bodyWithId } }
+  ,{ url: `${base}/api/v1/merchant/offer/update`,  init:{ method:'POST', headers, body: bodyWithId } }
+];
     let last=null;
     for (const opt of chain){
       try{ const r = await fetch(opt.url, opt.init); if (r.ok) return; last=r.status; if (r.status===404||r.status===405) continue; throw new Error('HTTP '+r.status); }catch(e){ last=e.message; }
