@@ -1,45 +1,53 @@
 import os
-import asyncio
-from fastapi import FastAPI, Request
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.filters import Command
+from telegram import (
+    Update, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+)
+from telegram.ext import (
+    Application, CommandHandler, ContextTypes
+)
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "webhook")
-WEBAPP_PUBLIC = os.getenv("WEBAPP_PUBLIC", "https://foodyweb-production.up.railway.app")
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # обязательно в Railway Variables
+WEBAPP_BUYER_URL = os.getenv("WEBAPP_BUYER_URL", "https://foodyweb-production.up.railway.app/web/buyer/")
+WEBAPP_MERCHANT_URL = os.getenv("WEBAPP_MERCHANT_URL", "https://foodyweb-production.up.railway.app/web/merchant/")
 
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
-app = FastAPI()
+INTRO = (
+    "Выберите раздел Mini App:\n"
+    "• 🛍️ Витрина — смотреть офферы\n"
+    "• 👨‍🍳 ЛК ресторана — создавать и управлять офферами"
+)
 
-@dp.message(Command("start"))
-async def start_handler(message: types.Message):
-    kb = InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="🛍 Витрина", url=f"{WEBAPP_PUBLIC}/web/buyer/"),
-        InlineKeyboardButton(text="🏪 Ресторан (ЛК)", url=f"{WEBAPP_PUBLIC}/web/merchant/")
-    ],[
-        InlineKeyboardButton(text="📋 Регистрация ресторана", url=f"{WEBAPP_PUBLIC}/web/merchant/register/")
-    ]])
-    await message.answer(
-        "Привет! Это Foody.\n\n"
-        "• Витрина — посмотреть предложения рядом.\n"
-        "• Личный кабинет — управлять офферами.\n"
-        "• Регистрация — создать ресторан и получить ключи.",
-        reply_markup=kb
+def kb_two_tabs() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton("🛍️ Витрина", web_app=WebAppInfo(url=WEBAPP_BUYER_URL))],
+            [InlineKeyboardButton("👨‍🍳 ЛК ресторана", web_app=WebAppInfo(url=WEBAPP_MERCHANT_URL))],
+        ]
     )
 
-@app.post(f"/{WEBHOOK_SECRET}")
-async def telegram_webhook(request: Request):
-    data = await request.json()
-    update = Update.model_validate(data)
-    await dp.feed_update(bot, update)
-    return {"ok": True}
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # /start [buyer|merchant] — необязательный быстр. переход
+    arg = (context.args[0].lower() if context.args else "")
+    if arg == "buyer":
+        await update.message.reply_text("Открыть витрину:", reply_markup=kb_two_tabs())
+        return
+    if arg == "merchant":
+        await update.message.reply_text("Открыть ЛК ресторана:", reply_markup=kb_two_tabs())
+        return
+    await update.message.reply_text(INTRO, reply_markup=kb_two_tabs())
 
-@app.get("/health")
-async def health():
-    return {"ok": True}
+async def app_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text(INTRO, reply_markup=kb_two_tabs())
+
+def main() -> None:
+    if not BOT_TOKEN:
+        raise SystemExit("BOT_TOKEN is not set")
+    application = Application.builder().token(BOT_TOKEN).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("app", app_cmd))
+
+    # Простой и надёжный вариант — polling (не требует вебхуков)
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+    main()
