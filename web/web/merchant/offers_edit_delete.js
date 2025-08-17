@@ -6,7 +6,20 @@
   function apiBase(){ return (window.__FOODY__ && window.__FOODY__.FOODY_API) || window.foodyApi || ''; }
   function rid(){ try { return localStorage.getItem('foody_restaurant_id') || ''; } catch(_){ return ''; } }
   function key(){ try { return localStorage.getItem('foody_key') || ''; } catch(_){ return ''; } }
-  function isoFromLocal(v){ if(!v) return null; try{ const p=v.includes('T')?v.split('T'):v.split(' '); const d=p[0].split('-'); const t=(p[1]||'00:00').split(':'); const dt=new Date(+d[0],+d[1]-1,+d[2],+(t[0]||0),+(t[1]||0)); return new Date(dt.getTime()-dt.getTimezoneOffset()*60000).toISOString(); }catch(_){ return v; } }
+  function isoFromLocal(v){
+  if(!v) return null;
+  try{
+    const s = v.trim().replace(' ', 'T');
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)){
+      const dt = new Date(s);
+      return new Date(dt.getTime() - dt.getTimezoneOffset()*60000).toISOString();
+    }
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }catch(_){ }
+  return v;
+}
+catch(_){ return v; } }
 
   // Augment table with Actions column if missing
   function ensureActionsUI(){
@@ -42,7 +55,7 @@
     qs('#editOld').value = (o && o.original_price_cents!=null) ? (o.original_price_cents/100) : (o?.original_price ?? '');
     qs('#editPrice').value = (o && o.price_cents!=null) ? (o.price_cents/100) : (o?.price ?? '');
     qs('#editQty').value = o?.qty_total ?? '';
-    qs('#editExpires').value = o?.expires_at ? String(o.expires_at).slice(0,16).replace('T',' ') : '';
+    qs('#editExpires').value = (o?.expires_at ? String(o.expires_at).slice(0,16) : '');
     qs('#editCategory').value = o?.category ?? '';
     qs('#editDesc').value = o?.description ?? '';
     m.style.display = 'block';
@@ -122,7 +135,7 @@
         category: qs('#editCategory').value || null,
         description: qs('#editDesc').value || null,
       };
-      try{ await updateOffer(id, payload); closeEdit(); try{ await window.load?.(); }catch(_){ } }catch(err){ alert('Не удалось сохранить: '+(err?.message||err)); }
+      try{ await updateOffer(id, payload); closeEdit(); if (window.refreshDashboard) { try { await refreshDashboard(); } catch(_){} } else { try { location.reload(); } catch(_){} } try{ await window.load?.(); }catch(_){ } }catch(err){ alert('Не удалось сохранить: '+(err?.message||err)); }
     });
     const cancel = qs('#offerEditCancel'); if (cancel) cancel.addEventListener('click', (e)=>{ e.preventDefault(); closeEdit(); });
   }
