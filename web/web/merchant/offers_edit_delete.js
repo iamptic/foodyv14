@@ -94,13 +94,13 @@
         original_price: qs('#editOld').value ? Number(qs('#editOld').value) : null,
         price: qs('#editPrice').value ? Number(qs('#editPrice').value) : null,
         qty_total: qs('#editQty').value ? Number(qs('#editQty').value) : null,
-        expires_at: qs('#editExpires').value || null,
+        expires_at: (dtLocalToIso(qs('#editExpires').value) || qs('#editExpires').value || null),
         category: qs('#editCategory').value || null,
         description: qs('#editDesc').value || null,
       };
       try{
         const res = await fetch(apiBase().replace(/\/+$/,'') + '/api/v1/merchant/offers/'+id, {
-          method:'PATCH',
+          method:'PUT',
           headers: { 'Content-Type':'application/json', 'X-Foody-Key': key() },
           body: JSON.stringify(payload)
         });
@@ -111,7 +111,19 @@
     });
   }
 
-  async function load(){
+  
+  function dtLocalToIso(v){
+    if (!v) return null;
+    try {
+      var parts = v.includes('T') ? v.split('T') : v.split(' ');
+      var d = parts[0].split('-'); var t = (parts[1]||'00:00').split(':');
+      var Y = parseInt(d[0],10), M = parseInt(d[1],10)-1, D = parseInt(d[2],10);
+      var h = parseInt(t[0],10)||0, m = parseInt(t[1],10)||0;
+      var dt = new Date(Y,M,D,h,m);
+      return new Date(dt.getTime() - dt.getTimezoneOffset()*60000).toISOString().slice(0,16)+':00Z';
+    } catch(_) { return null; }
+  }
+async function load(){
     try {
       const items = await fetchOffers();
       render(items);

@@ -39,3 +39,20 @@
 }
 .work-presets .chip:hover { filter: brightness(1.05); }
 .work-presets .chip.active { background: rgba(0,194,122,.2); border-color: rgba(0,194,122,.35); }
+
+/* === Patch: stabilize "Мои офферы" grid, prevent overlap === */
+#offerList .row { 
+  display: grid; 
+  grid-template-columns: minmax(140px,2fr) minmax(70px,.9fr) minmax(70px,.8fr) minmax(82px,.9fr) minmax(160px,1.2fr) minmax(120px, max-content);
+  gap: 8px; 
+  align-items: center;
+}
+#offerList .row > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#offerList .row > div:nth-child(5) { white-space: nowrap; } /* date */
+#offerList .row .actions { display:flex; gap:6px; justify-content:flex-end; flex-wrap: nowrap; }
+#offerList .row .actions .btn { white-space: nowrap; }
+
+@media (max-width: 560px){
+  #offerList .row { grid-template-columns: 1.4fr .8fr .7fr .8fr 1.1fr minmax(96px, max-content); }
+  #offerList .row .actions .btn { padding: 8px 10px; }
+}
