@@ -487,3 +487,159 @@ async def change_password(payload: dict = Body(...), request: Request = None):
             raise HTTPException(status_code=401, detail="invalid current password")
         await conn.execute("UPDATE merchants SET password_hash=$2 WHERE id=$1", restaurant_id, _hash_password(new_password))
         return {"ok": True}
+
+
+# =====================
+# Public & detail offer endpoints (stable contract)
+# =====================
+
+from typing import List, Optional
+
+class OfferUpdate(BaseModel):
+    title: Optional[str] = None
+    price: Optional[float] = None
+    original_price: Optional[float] = None
+    qty_total: Optional[int] = None
+    qty_left: Optional[int] = None
+    expires_at: Optional[str] = None
+    image_url: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+
+def _parse_dt_maybe(iso: Optional[str]):
+    if not iso:
+        return None
+    try:
+        # accept 'YYYY-MM-DD HH:MM' and ISO8601
+        if len(iso) == 16 and iso[10] == ' ':
+            iso = iso.replace(' ', 'T') + ':00Z'
+        dt = datetime.fromisoformat(iso.replace('Z','+00:00'))
+        return dt
+    except Exception:
+        return None
+
+@app.get("/api/v1/public/offers")
+async def public_offers(restaurant_id: Optional[int] = None, limit: int = 200):
+    async with _pool.acquire() as conn:
+        # build query
+        base_sql = """
+            SELECT id, restaurant_id, title, price_cents, original_price_cents,
+                   qty_total, qty_left, expires_at, image_url, category, description
+              FROM offers
+             WHERE (qty_left IS NULL OR qty_left > 0)
+               AND (expires_at IS NULL OR expires_at > now())
+        """
+        order_limit = f" ORDER BY COALESCE(expires_at, now() + interval '365 days') ASC LIMIT {int(limit)}"
+        if restaurant_id:
+            rows = await conn.fetch(base_sql + " AND restaurant_id=$1" + order_limit, int(restaurant_id))
+        else:
+            rows = await conn.fetch(base_sql + order_limit)
+        out = []
+        for r in rows:
+            d = dict(r)
+            if d.get("expires_at"):
+                d["expires_at"] = d["expires_at"].astimezone(timezone.utc).isoformat()
+            out.append(d)
+        return out
+
+@app.put("/api/v1/merchant/offers/{offer_id}")
+async def update_offer(offer_id: int, payload: OfferUpdate, request: Request, restaurant_id: Optional[int] = None):
+    api_key = _get_api_key(request)
+    rid = int(restaurant_id or 0)
+    async with _pool.acquire() as conn:
+        if rid:
+            await _require_auth(conn, rid, api_key)
+        else:
+            # If restaurant_id not provided, try to infer from offer row under provided key
+            if not api_key:
+                raise HTTPException(status_code=401, detail="restaurant_id or X-Foody-Key required")
+            row = await conn.fetchrow("SELECT restaurant_id FROM offers WHERE id=$1", offer_id)
+            if not row:
+                raise HTTPException(status_code=404, detail="offer not found")
+            rid = row["restaurant_id"]
+            await _require_auth(conn, rid, api_key)
+
+        # Build dynamic update
+        fields = {}
+        if payload.title is not None: fields["title"] = payload.title.strip()
+        if payload.price is not None:
+            fields["price_cents"] = int(round(float(payload.price) * 100))
+            fields["price"] = float(payload.price)
+        if payload.original_price is not None:
+            fields["original_price_cents"] = int(round(float(payload.original_price) * 100))
+            fields["original_price"] = float(payload.original_price)
+        if payload.qty_total is not None: fields["qty_total"] = int(payload.qty_total)
+        if payload.qty_left is not None: fields["qty_left"] = int(payload.qty_left)
+        if payload.expires_at is not None:
+            dt = _parse_dt_maybe(payload.expires_at)
+            if not dt:
+                raise HTTPException(status_code=400, detail="invalid expires_at")
+            fields["expires_at"] = dt
+        if payload.image_url is not None: fields["image_url"] = payload.image_url or None
+        if payload.category is not None: fields["category"] = payload.category or None
+        if payload.description is not None: fields["description"] = payload.description or None
+
+        if not fields:
+            return {"ok": True, "updated": 0}
+
+        sets = ", ".join([f"{k} = ${i+3}" for i, k in enumerate(fields.keys())])
+        vals = list(fields.values())
+        res = await conn.execute(
+            f"UPDATE offers SET {sets} WHERE id = $1 AND restaurant_id = $2",
+            offer_id, rid, *vals
+        )
+        # asyncpg returns like 'UPDATE 1'
+        if not res or not res.endswith("1"):
+            raise HTTPException(status_code=404, detail="offer not found")
+        return {"ok": True}
+
+@app.delete("/api/v1/merchant/offers/{offer_id}")
+async def delete_offer(offer_id: int, request: Request, restaurant_id: Optional[int] = None):
+    api_key = _get_api_key(request)
+    rid = int(restaurant_id or 0)
+    async with _pool.acquire() as conn:
+        if rid:
+            await _require_auth(conn, rid, api_key)
+        else:
+            # infer rid by offer id
+            if not api_key:
+                raise HTTPException(status_code=401, detail="restaurant_id or X-Foody-Key required")
+            row = await conn.fetchrow("SELECT restaurant_id FROM offers WHERE id=$1", offer_id)
+            if not row:
+                raise HTTPException(status_code=404, detail="offer not found")
+            rid = row["restaurant_id"]
+            await _require_auth(conn, rid, api_key)
+
+        res = await conn.execute("DELETE FROM offers WHERE id=$1 AND restaurant_id=$2", offer_id, rid)
+        if not res or not res.endswith("1"):
+            raise HTTPException(status_code=404, detail="offer not found")
+        return {"ok": True}
+
+# --- Compatibility POST routes (if frontend hits them) ---
+@app.post("/api/v1/merchant/offers/update")
+async def update_offer_post(payload: Dict[str, Any] = Body(...), request: Request = None):
+    offer_id = int(payload.get("id") or payload.get("offer_id") or 0)
+    if not offer_id:
+        raise HTTPException(status_code=400, detail="id required")
+    # Pass-through to PUT
+    class _PU(BaseModel):
+        title: Optional[str] = None
+        price: Optional[float] = None
+        original_price: Optional[float] = None
+        qty_total: Optional[int] = None
+        qty_left: Optional[int] = None
+        expires_at: Optional[str] = None
+        image_url: Optional[str] = None
+        category: Optional[str] = None
+        description: Optional[str] = None
+    up = _PU(**{k: payload.get(k) for k in _PU.model_fields})
+    rid = payload.get("restaurant_id")
+    return await update_offer(offer_id, up, request, restaurant_id=rid)
+
+@app.post("/api/v1/merchant/offers/delete")
+async def delete_offer_post(payload: Dict[str, Any] = Body(...), request: Request = None):
+    offer_id = int(payload.get("id") or payload.get("offer_id") or 0)
+    if not offer_id:
+        raise HTTPException(status_code=400, detail="id required")
+    rid = payload.get("restaurant_id")
+    return await delete_offer(offer_id, request, restaurant_id=rid)

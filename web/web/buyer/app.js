@@ -2,8 +2,6 @@
   const $ = (s,r=document)=>r.querySelector(s);
   const tg = window.Telegram?.WebApp; if (tg){ tg.expand(); const apply=()=>{const s=tg.colorScheme||'dark';document.documentElement.dataset.theme=s;}; apply(); tg.onEvent?.('themeChanged',apply); }
   const API = (window.__FOODY__&&window.__FOODY__.FOODY_API)||"https://foodyback-production.up.railway.app";
-const res = await fetch(API + '/api/v1/public/offers');
-const offers = await res.json();
 
   let offers=[];
   const grid = $('#grid')
