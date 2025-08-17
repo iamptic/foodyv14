@@ -12,30 +12,3 @@
 .modal .modal-card { position:absolute; left:50%; top:10%; transform:translateX(-50%); width:min(720px, 92vw); background:#fff; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.2); padding:18px; }
 .modal .modal-title { font-size:18px; font-weight:600; margin-bottom:8px; }
 .modal .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:6px; }
-
-
-/* === Foody patch: dark modal & presets like create === */
-.modal .modal-card{
-  max-width: min(760px, 96%);
-  left: 50%; top: 6%;
-  transform: translateX(-50%);
-  background: var(--card);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  box-shadow: var(--shadow);
-  padding: 18px;
-}
-.modal .modal-title{ color: var(--text); opacity:.9; }
-.modal .modal-dim{ background: rgba(0,0,0,.55); backdrop-filter: blur(2px); }
-
-/* Presets (chips) */
-.work-presets { display:flex; gap:8px; flex-wrap:wrap; }
-.work-presets .chip {
-  padding: 8px 12px; border-radius: 12px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,.04);
-  cursor: pointer; user-select: none;
-}
-.work-presets .chip:hover { filter: brightness(1.05); }
-.work-presets .chip.active { background: rgba(0,194,122,.2); border-color: rgba(0,194,122,.35); }

@@ -507,9 +507,8 @@
     if (!state.rid || !state.key) return;
     const root = $('#offerList'); if (root) root.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
     try {
-      const data = await api(`/api/v1/merchant/offers?restaurant_id=${encodeURIComponent(state.rid)}`);
-      const list = (data && (data.items || data.results)) ? (data.items || data.results) : (Array.isArray(data) ? data : []);
-      renderOffers(list);
+      const items = await api(`/api/v1/merchant/offers?restaurant_id=${encodeURIComponent(state.rid)}`);
+      renderOffers(items || []);
     } catch (err) { console.error(err); if (root) root.innerHTML = '<div class="hint">Не удалось загрузить</div>'; }
   }
 
@@ -522,34 +521,16 @@
       const old   = o.original_price_cents!=null ? o.original_price_cents/100 : (o.original_price!=null ? Number(o.original_price) : 0);
       const disc = old>0 ? Math.round((1 - price/old)*100) : 0;
       const exp = o.expires_at ? fmt.format(new Date(o.expires_at)) : '—';
-      return `<div class="row" data-offer-id="${o.id}">
+      return `<div class="row">
         <div>${o.title || '—'}</div>
         <div>${price.toFixed(2)}</div>
         <div>${disc?`-${disc}%`:'—'}</div>
         <div>${o.qty_left ?? '—'} / ${o.qty_total ?? '—'}</div>
         <div>${exp}</div>
-        <div class="actions"><button class="btn btn-ghost" data-action="delete">Удалить</button></div>
       </div>`;
     }).join('');
-    const head = `<div class="row head"><div>Название</div><div>Цена</div><div>Скидка</div><div>Остаток</div><div>До</div><div></div></div>`;
+    const head = `<div class="row head"><div>Название</div><div>Цена</div><div>Скидка</div><div>Остаток</div><div>До</div></div>`;
     root.innerHTML = head + rows;
-    // bind delete (delegated)
-    if (!root.dataset.deleteBound){
-      root.dataset.deleteBound = '1';
-      root.addEventListener('click', async (e) => {
-        const btn = e.target.closest('[data-action="delete"]'); if (!btn) return;
-        const row = btn.closest('.row'); const id = row && row.getAttribute('data-offer-id'); if (!id) return;
-        if (!confirm('Удалить оффер?')) return;
-        try {
-          await api(`/api/v1/merchant/offers/${id}`, { method: 'DELETE' });
-          row.remove();
-          try { refreshDashboard && refreshDashboard(); } catch(_){}
-          showToast('Оффер удалён');
-        } catch (err) {
-          showToast('Не удалось удалить: '+ (err.message||err));
-        }
-      });
-    }
   }
 
   
