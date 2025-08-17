@@ -22,18 +22,20 @@ a{color:var(--brand);text-decoration:none}
 @media (min-width:540px){.grid{grid-template-columns:repeat(2,1fr)}}
 @media (min-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
 
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;position:relative}
 .photo{position:relative;aspect-ratio:4/3;background:#f3f3f3}
 .photo img{width:100%;height:100%;object-fit:cover;display:block}
 .badge{position:absolute;left:10px;top:10px;background:#111cc7;color:#fff;padding:6px 10px;border-radius:999px;font-size:13px;font-weight:700}
+.badge.badge--timer{right:10px;left:auto;background:#111;opacity:.9}
 .info{padding:12px;display:flex;flex-direction:column;gap:6px}
 .title{margin:0 0 2px;font-size:16px;line-height:1.2}
 .desc{margin:0;color:var(--sub);font-size:14px}
-.row{display:flex;justify-content:space-between;align-items:center}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .price{font-weight:800}
 .muted{color:var(--muted);font-size:13px}
 .actions{display:flex;gap:8px;margin-top:6px}
 .btn-buy{flex:1}
+
 .skeleton{animation:shimmer 1.2s infinite linear;background:
   linear-gradient(100deg, #eee 40%, #f7f7f7 50%, #eee 60%) 0 0/200% 100%;
   border-radius:12px}
@@ -44,3 +46,10 @@ a{color:var(--brand);text-decoration:none}
 .status{min-height:20px;margin:6px 0 10px;color:var(--sub)}
 .alert{padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#fff}
 .alert.error{border-color:#ffd3d6;background:#fff6f6;color:var(--danger)}
+
+/* MODAL */
+.modal{position:fixed;inset:0;display:none}
+.modal[aria-hidden="false"]{display:block}
+.modal__backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.modal__sheet{position:relative;max-width:520px;margin:8vh auto;background:#fff;border-radius:16px;padding:16px;border:1px solid var(--line);box-shadow:var(--shadow)}
+.modal__close{position:absolute;right:10px;top:10px;border:none;backgroun
