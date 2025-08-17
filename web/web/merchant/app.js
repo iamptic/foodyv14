@@ -15,6 +15,12 @@
   const toastBox = $('#toast');
   const showToast = (msg) => {
     if (!toastBox) return alert(msg);
+    try {
+      const now = Date.now();
+      if (!window.__toast) window.__toast = { last:'', ts:0 };
+      if (msg && window.__toast.last === String(msg) && (now - window.__toast.ts) < 1200) return;
+      window.__toast.last = String(msg); window.__toast.ts = now;
+    } catch(_) {}
     const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
     toastBox.appendChild(el); setTimeout(() => el.remove(), 4200);
   };
@@ -240,7 +246,7 @@
   function bindDiscountPresets(){
     const box = $('#discountPresets'); if (!box) return;
     const priceEl = $('#offerPrice'), oldEl = $('#offerOldPrice');
-    const round = (v) => Math.round((Number(v)||0) * 100) / 100;
+    const round = (v) => Math.round(Number(v)||0);
     box.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip'); if (!chip) return;
       const d = Number(chip.dataset.discount || '0'); if (!d) return;
@@ -254,7 +260,20 @@
     });
   }
 
-  function bindExpirePresets(){
+  
+  function autoRoundOfferPrice(){
+    try {
+      const priceEl = $('#offerPrice');
+      if (!priceEl || priceEl._roundBound) return;
+      const doRound = () => {
+        const v = parseFloat(String(priceEl.value||'').replace(',','.'));
+        if (isFinite(v)) priceEl.value = String(Math.round(v));
+      };
+      ['change','blur'].forEach(ev => priceEl.addEventListener(ev, doRound));
+      priceEl._roundBound = true;
+    } catch(_) {}
+  }
+function bindExpirePresets(){
     const box = $('#expirePresets'); if (!box) return;
     const ex = $('#expires_at');
     const fp = ex? ex._flatpickr : null;
@@ -500,6 +519,17 @@
       }
       bindDiscountPresets();
       bindExpirePresets();
+      const bb = $('#best_before');
+      if (window.flatpickr && bb && !bb._flatpickr) {
+        if (window.flatpickr.l10ns && window.flatpickr.l10ns.ru) { flatpickr.localize(flatpickr.l10ns.ru); }
+        flatpickr('#best_before', {
+          enableTime: true, time_24hr: true, minuteIncrement: 5,
+          dateFormat: 'Y-m-d H:i', altInput: true, altFormat: 'd.m.Y H:i',
+          minDate: 'today'
+        });
+      }
+      
+      autoRoundOfferPrice();
     } catch (e) {}
   }
 
@@ -507,8 +537,9 @@
     if (!state.rid || !state.key) return;
     const root = $('#offerList'); if (root) root.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
     try {
-      const items = await api(`/api/v1/merchant/offers?restaurant_id=${encodeURIComponent(state.rid)}`);
-      renderOffers(items || []);
+      const data = await api(`/api/v1/merchant/offers?restaurant_id=${encodeURIComponent(state.rid)}`);
+      const list = (data && (data.items || data.results)) ? (data.items || data.results) : (Array.isArray(data) ? data : []);
+      renderOffers(list);
     } catch (err) { console.error(err); if (root) root.innerHTML = '<div class="hint">Не удалось загрузить</div>'; }
   }
 
@@ -521,19 +552,38 @@
       const old   = o.original_price_cents!=null ? o.original_price_cents/100 : (o.original_price!=null ? Number(o.original_price) : 0);
       const disc = old>0 ? Math.round((1 - price/old)*100) : 0;
       const exp = o.expires_at ? fmt.format(new Date(o.expires_at)) : '—';
-      return `<div class="row">
+      return `<div class="row" data-offer-id="${o.id}">
         <div>${o.title || '—'}</div>
         <div>${price.toFixed(2)}</div>
         <div>${disc?`-${disc}%`:'—'}</div>
         <div>${o.qty_left ?? '—'} / ${o.qty_total ?? '—'}</div>
         <div>${exp}</div>
+        <div class="actions"><button class="btn btn-ghost" data-action="delete">Удалить</button></div>
       </div>`;
     }).join('');
-    const head = `<div class="row head"><div>Название</div><div>Цена</div><div>Скидка</div><div>Остаток</div><div>До</div></div>`;
+    const head = `<div class="row head"><div>Название</div><div>Цена</div><div>Скидка</div><div>Остаток</div><div>До</div><div></div></div>`;
     root.innerHTML = head + rows;
+    // bind delete (delegated)
+    if (!root.dataset.deleteBound){
+      root.dataset.deleteBound = '1';
+      root.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-action="delete"]'); if (!btn) return;
+        const row = btn.closest('.row'); const id = row && row.getAttribute('data-offer-id'); if (!id) return;
+        if (!confirm('Удалить оффер?')) return;
+        try {
+          await api(`/api/v1/merchant/offers/${id}`, { method: 'DELETE' });
+          row.remove();
+          try { refreshDashboard && refreshDashboard(); } catch(_){}
+          showToast('Оффер удалён');
+        } catch (err) {
+          showToast('Не удалось удалить: '+ (err.message||err));
+        }
+      });
+    }
   }
 
   
+let __dashLastData = null;
 // === Dashboard helpers (lightweight) ===
 function safeNum(v){ const n = Number(v); return isFinite(n) ? n : 0; }
 function parseMaybeDate(v){

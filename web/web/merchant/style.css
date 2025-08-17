@@ -163,7 +163,7 @@ input:focus, textarea:focus { border-color: var(--brand-2); box-shadow: 0 0 0 2p
 }
 
 /* Toasts */
-#toast { position: fixed; right: 12px; bottom: 70px; display: grid; gap: 8px; z-index: 40; }
+#toast { pointer-events: none; position: fixed; right: 12px; bottom: 70px; display: grid; gap: 8px; z-index: 40; }
 .toast {
   background: #10161d; border: 1px solid var(--border); border-left: 6px solid var(--brand-2);
   padding: 12px 14px; border-radius: 12px; box-shadow: var(--shadow);
@@ -518,4 +518,20 @@ section#auth .card :is(.card-title,.title,h1,h2,h3){
   justify-content:center !important;
   text-align:center !important;
   margin:8px 0 16px !important;
+}
+
+
+/* === Foody patch: align "Мои офферы" table (mobile-safe) === */
+#offerList .row { 
+  grid-template-columns: minmax(140px, 2fr) minmax(72px, .9fr) minmax(72px, .8fr) minmax(88px, .8fr) minmax(160px, 1.2fr) minmax(110px, max-content);
+}
+#offerList .row > div { min-width: 0; }
+#offerList .row .nowrap { white-space: nowrap; }
+#offerList .row .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+#offerList .row .actions { display:flex; gap:8px; justify-content:flex-end; flex-wrap: nowrap; }
+#offerList .row .actions .btn { white-space: nowrap; padding: 8px 12px; }
+
+@media (max-width: 480px) {
+  #offerList .row { grid-template-columns: 1.6fr .9fr .7fr .8fr 1.1fr minmax(96px, max-content); }
+  #offerList .row .actions .btn { padding: 8px 10px; }
 }
