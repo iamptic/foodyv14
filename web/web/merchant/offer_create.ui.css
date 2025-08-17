@@ -1,0 +1,12 @@
+
+/* Foody — Offer Create UI (minimal) — 2025-08-17 */
+
+.foody-offer-inline { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.foody-rounder { display:inline-flex; align-items:center; gap:6px; font-size:13px; opacity:0.85; }
+.foody-rounder input[type="radio"] { margin:0 2px 0 0; }
+.foody-note { font-size:12px; opacity:.8; margin-top:4px; }
+.foody-summary { margin-top:10px; font-weight:600; font-size:14px; }
+.foody-warn { color:#b3261e; font-size:12px; margin-top:6px; }
+
+/* Compact helpers if grid is used */
+.foody-span-2 { grid-column: 1 / -1; }
