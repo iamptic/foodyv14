@@ -55,6 +55,8 @@
     qs('#editExpires').value = o.expires_at ? o.expires_at.replace('T',' ').slice(0,16) : '';
     qs('#editCategory').value = o.category || 'ready_meal';
     qs('#editDesc').value = o.description || '';
+    bindEditDiscounts();
+    bindEditDateGuard();
   }
   function closeEdit(){ const m = qs('#offerEditModal'); if(m) m.style.display='none'; }
 
@@ -71,7 +73,7 @@
       if(act==='delete-offer'){
         if(!confirm('Удалить оффер «'+(item.title||'')+'»?')) return;
         try{
-          const res = await fetch(apiBase().replace(/\/+$/,'') + '/api/v1/merchant/offers/'+id, {
+          const res = await fetch(apiBase().replace(/\/+$/,'') + '/api/v1/merchant/offers/'+id + '?restaurant_id=' + encodeURIComponent(rid()), {
             method:'DELETE', headers:{ 'X-Foody-Key': key() }
           });
           if(!res.ok) throw new Error('HTTP '+res.status);
@@ -92,13 +94,13 @@
         original_price: qs('#editOld').value ? Number(qs('#editOld').value) : null,
         price: qs('#editPrice').value ? Number(qs('#editPrice').value) : null,
         qty_total: qs('#editQty').value ? Number(qs('#editQty').value) : null,
-        expires_at: qs('#editExpires').value || null,
+        expires_at: (dtLocalToIso(qs('#editExpires').value) || qs('#editExpires').value || null),
         category: qs('#editCategory').value || null,
         description: qs('#editDesc').value || null,
       };
       try{
-        const res = await fetch(apiBase().replace(/\/+$/,'') + '/api/v1/merchant/offers/'+id, {
-          method:'PATCH',
+        const res = await fetch(apiBase().replace(/\/+$/,'') + '/api/v1/merchant/offers/'+id + '?restaurant_id=' + encodeURIComponent(rid()), {
+          method:'PUT',
           headers: { 'Content-Type':'application/json', 'X-Foody-Key': key() },
           body: JSON.stringify(payload)
         });
@@ -109,7 +111,19 @@
     });
   }
 
-  async function load(){
+  
+  function dtLocalToIso(v){
+    if (!v) return null;
+    try {
+      var parts = v.includes('T') ? v.split('T') : v.split(' ');
+      var d = parts[0].split('-'); var t = (parts[1]||'00:00').split(':');
+      var Y = parseInt(d[0],10), M = parseInt(d[1],10)-1, D = parseInt(d[2],10);
+      var h = parseInt(t[0],10)||0, m = parseInt(t[1],10)||0;
+      var dt = new Date(Y,M,D,h,m);
+      return new Date(dt.getTime() - dt.getTimezoneOffset()*60000).toISOString().slice(0,16)+':00Z';
+    } catch(_) { return null; }
+  }
+async function load(){
     try {
       const items = await fetchOffers();
       render(items);
@@ -121,6 +135,69 @@
     document.addEventListener('click', function(e){
       if (e.target.closest('[data-tab="offers"]')) { setTimeout(load, 50); }
     }, true);
+  }
+
+
+  /* --- Bind discount controls in Edit modal (same as Create) --- */
+  function bindEditDiscounts(){
+    const base = qs('#editOld');
+    const final = qs('#editPrice');
+    const disc = qs('#editDiscountPercent');
+    const chipsWrap = qs('#editDiscountPresets');
+    const chips = chipsWrap ? Array.from(chipsWrap.querySelectorAll('.chip')) : [];
+    const money = v => { if(v==null) return NaN; const s=String(v).replace(/\s+/g,'').replace(',', '.').replace(/[^\d.]/g,''); return parseFloat(s); };
+    const clamp = (n,min,max)=> Math.min(max, Math.max(min, n));
+    function markChip(d){
+      chips.forEach(c => c.classList.toggle('active', String(c.dataset.discount) === String(d)));
+    }
+    function recalcFromDiscount(){
+      const b = money(base && base.value);
+      const d = parseInt(disc && disc.value, 10);
+      if (isFinite(b) && isFinite(d)){
+        const f = Math.round(b * (1 - d/100));
+        if (final) final.value = String(f);
+        markChip(d);
+      }
+    }
+    function recalcFromFinal(){
+      const b = money(base && base.value), f = money(final && final.value);
+      if (isFinite(b) && isFinite(f) && b>0){
+        const d = Math.round((1 - f/b)*100);
+        if (disc) disc.value = String(clamp(d,0,99));
+        markChip(d);
+      }
+    }
+    if (disc && !disc._edBound){ disc.addEventListener('input', recalcFromDiscount); disc.addEventListener('change', recalcFromDiscount); disc._edBound = true; }
+    if (base && !base._edBound){ base.addEventListener('input', recalcFromDiscount); base.addEventListener('change', recalcFromDiscount); base._edBound = true; }
+    if (final && !final._edBound){ final.addEventListener('input', recalcFromFinal); final.addEventListener('change', recalcFromFinal); final._edBound = true; }
+    chips.forEach(ch => { if (!ch._edBound){ ch._edBound = true; ch.addEventListener('click', (e)=>{ e.preventDefault(); const d = parseInt(ch.dataset.discount,10); if (!isFinite(d)) return; if (disc) disc.value = String(d); recalcFromDiscount(); }); } });
+  }
+
+  /* --- Validate: editExpires must not exceed editBestBefore --- */
+  function bindEditDateGuard(){
+    const ex = qs('#editExpires');
+    const bb = qs('#editBestBefore');
+    if (!ex) return;
+    function parseLocal(s){
+      if (!s) return null;
+      try {
+        const parts = s.includes('T') ? s.split('T') : s.split(' ');
+        const [Y,M,D] = parts[0].split('-').map(x=>parseInt(x,10));
+        const [h,m] = (parts[1]||'00:00').split(':').map(x=>parseInt(x,10));
+        return new Date(Y, (M-1), D, h||0, m||0, 0, 0);
+      } catch(_){ return null; }
+    }
+    function guard(){
+      const dEx = parseLocal(ex.value);
+      const dBb = parseLocal(bb && bb.value);
+      if (dEx && dBb && dEx.getTime() > dBb.getTime()){
+        // clamp to best-before
+        const y=dBb.getFullYear(), mo=String(dBb.getMonth()+1).padStart(2,'0'), da=String(dBb.getDate()).padStart(2,'0');
+        const hh=String(dBb.getHours()).padStart(2,'0'), mi=String(dBb.getMinutes()).padStart(2,'0');
+        ex.value = `${y}-${mo}-${da} ${hh}:${mi}`;
+      }
+    }
+    ['input','change','blur'].forEach(ev => { ex.addEventListener(ev, guard); if (bb) bb.addEventListener(ev, guard); });
   }
 
   // auto-run if offers list is visible now
