@@ -1,146 +1,136 @@
-/*! Foody Merchant — Actions overlay (Edit/Delete) */
+/*! Foody Merchant Hotfix: Edit/Delete (global delegation, X-Foody-Key) — 2025-08-18 */
 (function(){
-  function ready(fn){ if(document.readyState==='complete'||document.readyState==='interactive') setTimeout(fn,0); else document.addEventListener('DOMContentLoaded',fn); }
-  function qs(s,r=document){ return r.querySelector(s); }
-  function qsa(s,r=document){ return Array.from(r.querySelectorAll(s)); }
-  function apiBase(){ return (window.__FOODY__ && window.__FOODY__.FOODY_API) || window.foodyApi || ''; }
-  function rid(){ try { return localStorage.getItem('foody_restaurant_id') || ''; } catch(_){ return ''; } }
-  function key(){ try { return localStorage.getItem('foody_key') || ''; } catch(_){ return ''; } }
-  function isoFromLocal(v){
-  if(!v) return null;
-  try{
-    const s = v.trim().replace(' ', 'T');
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)){
-      const dt = new Date(s);
-      return new Date(dt.getTime() - dt.getTimezoneOffset()*60000).toISOString();
-    }
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) return d.toISOString();
-  }catch(_){ }
-  return v;
-}
-catch(_){ return v; } }
+  'use strict';
 
-  // Augment table with Actions column if missing
-  function ensureActionsUI(){
-    const root = qs('#offerList'); if(!root) return;
-    const head = root.querySelector('.row.head');
-    if (head){
-      const last = head.children[head.children.length-1];
-      if (!last || last.textContent.trim()===''){
-        const dv = document.createElement('div'); dv.textContent = 'Действия'; head.appendChild(dv);
+  const API = ((window.__FOODY__ && window.__FOODY__.FOODY_API) || window.foodyApi || "https://foodyback-production.up.railway.app").replace(/\/+$/,"");
+
+  const $ = (s, r=document)=>r.querySelector(s);
+
+  function toast(msg, type){
+    let root = document.getElementById("toast");
+    if (!root){ root = document.createElement("div"); root.id = "toast"; document.body.appendChild(root); }
+    const el = document.createElement("div");
+    el.className = "toast " + (type ? ("toast--" + type) : "");
+    el.textContent = msg;
+    if (!getComputedStyle(el).backgroundColor || getComputedStyle(el).backgroundColor === "rgba(0, 0, 0, 0)"){
+      el.style.background = (type==="err" ? "#e5484d" : (type==="ok" ? "#12a150" : "#14161a"));
+      el.style.color = "#fff"; el.style.padding = "10px 14px"; el.style.borderRadius = "12px";
+      el.style.boxShadow = "0 8px 24px rgba(0,0,0,.2)"; el.style.fontWeight = "600"; el.style.marginTop = "8px";
+    }
+    root.appendChild(el); setTimeout(()=>{ el.style.opacity="0"; el.style.transition="opacity .3s"; setTimeout(()=>el.remove(), 320); }, 2200);
+  }
+
+  function headers(){ return { "X-Foody-Key": (localStorage.getItem("foody_key")||""), "Content-Type":"application/json" }; }
+  function rid(){ return (localStorage.getItem("foody_restaurant_id")||""); }
+
+  async function http(url, init){ const r = await fetch(url, init); return r; }
+
+  function ensureDeleteModal(){
+    let modal = document.getElementById("delete-modal");
+    if (!modal){
+      const wrap = document.createElement("div");
+      wrap.innerHTML = `<div id="delete-modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+        <div class="modal__backdrop" data-close-delete></div>
+        <div class="modal__sheet" role="document">
+          <button class="modal__close" type="button" title="Закрыть" data-close-delete>✕</button>
+          <h3 class="modal__title">Удалить оффер?</h3>
+          <p>Действие необратимо. Оффер #<span id="delete-offer-id">—</span> будет удалён.</p>
+          <div class="modal__actions">
+            <button class="btn btn-danger" id="delete-confirm">Удалить</button>
+            <button class="btn btn-secondary" data-close-delete>Отмена</button>
+          </div>
+        </div>
+      </div>`;
+      document.body.appendChild(wrap.firstElementChild);
+      modal = document.getElementById("delete-modal");
+      modal.addEventListener("click", (e)=>{ if (e.target && e.target.hasAttribute && e.target.hasAttribute("data-close-delete")) closeDelete(); });
+      document.addEventListener("keydown", (e)=>{ if (e.key==="Escape") closeDelete(); });
+    }
+    return modal;
+  }
+  function openDelete(id, onConfirm){
+    const m = ensureDeleteModal();
+    const span = document.getElementById("delete-offer-id");
+    const btn = document.getElementById("delete-confirm");
+    if (span) span.textContent = id;
+    if (btn){ btn.onclick = () => onConfirm(id); btn.disabled = false; btn.textContent = "Удалить"; }
+    m.setAttribute("aria-hidden","false"); document.body.style.overflow = "hidden";
+  }
+  function closeDelete(){
+    const m = document.getElementById("delete-modal"); if (!m) return;
+    m.setAttribute("aria-hidden","true"); document.body.style.overflow = "";
+    const btn = document.getElementById("delete-confirm"); if (btn) btn.onclick = null;
+  }
+
+  function findOfferId(btn){
+    if (!btn) return "";
+    if (btn.dataset && (btn.dataset.id || btn.dataset.offerId)) return btn.dataset.id || btn.dataset.offerId;
+    const row = btn.closest("[data-offer-id], [data-id], tr, .row, .offer-row");
+    if (row){
+      return row.getAttribute("data-offer-id") || row.getAttribute("data-id") || (row.querySelector('input[name="id"]')?.value) || "";
+    }
+    return btn.getAttribute("data-offer-id") || btn.getAttribute("data-id") || "";
+  }
+
+  async function doEdit(id){
+    try{
+      const r = await http(`${API}/api/v1/merchant/offers/${id}?restaurant_id=${encodeURIComponent(rid())}`, { headers: headers() });
+      const o = r.ok ? await r.json() : null;
+      if (!o) throw new Error("HTTP " + r.status);
+      // Fill form in "create" tab
+      const goto = document.querySelector('[data-tab="create"]') || document.querySelector('[data-tab-target="#create"]'); if (goto) goto.click();
+      const set = (sel,val)=>{ const el=$(sel); if (el) try{ el.value = val; }catch{} };
+      set("#offerId", o.id);
+      set("#title", o.title || "");
+      set("#description", o.description || "");
+      set("#price", o.price ?? "");
+      set("#stock", (o.qty_total ?? o.stock) ?? "");
+      set("#photo_url", o.photo_url || "");
+      try{ set("#expires_at", o.expires_at ? new Date(o.expires_at).toISOString().slice(0,16) : ""); }catch{}
+      const prev = document.getElementById("photoPreview");
+      if (prev && o.photo_url){ prev.src = o.photo_url; prev.style.display = "block"; }
+      const saveBtn = document.getElementById("saveOffer"); if (saveBtn) saveBtn.textContent = "Сохранить изменения";
+      toast("Режим редактирования — внесите изменения и сохраните", "ok");
+    }catch(e){ console.warn(e); toast("Не удалось загрузить оффер для редактирования", "err"); }
+  }
+
+  async function doDelete(id){
+    const btn = document.getElementById("delete-confirm");
+    if (btn){ btn.disabled = true; btn.textContent = "Удаляем…"; }
+    try{
+      const R = encodeURIComponent(rid());
+      const chain = [
+        `${API}/api/v1/merchant/offers/${id}?restaurant_id=${R}`,
+        `${API}/api/v1/merchant/offers/${id}`
+      ];
+      let last=null;
+      for (const url of chain){
+        try{
+          const resp = await fetch(url, { method: "DELETE", headers: headers() });
+          if (resp.ok) { last = null; break; }
+          last = resp.status;
+        }catch(e){ last = e.message; }
       }
-    }
-    qsa('.row:not(.head)', root).forEach(row => {
-      let cell = row.querySelector('.actions');
-      if (!cell){
-        cell = document.createElement('div'); cell.className='actions';
-        cell.innerHTML = '<button class="btn" data-action="edit-offer">Редактировать</button><button class="btn btn-ghost" data-action="delete-offer">Удалить</button>';
-        row.appendChild(cell);
-      } else {
-        // ensure buttons present
-        if (!cell.querySelector('[data-action]')){
-          cell.innerHTML = '<button class="btn" data-action="edit-offer">Редактировать</button><button class="btn btn-ghost" data-action="delete-offer">Удалить</button>';
-        }
-      }
-      row.style.gridTemplateColumns = ''; // let CSS handle
-    });
+      if (last) throw new Error(last);
+      toast("Оффер удалён", "ok"); closeDelete();
+      // refresh if helper exists
+      if (typeof window.loadOffers === "function") window.loadOffers();
+      else if (typeof window.loadMyOffers === "function") window.loadMyOffers();
+    }catch(e){ console.warn(e); toast("Не удалось удалить оффер", "err"); }
+    finally{ if (btn){ btn.disabled = false; btn.textContent = "Удалить"; } }
   }
 
-  // Modal open/close (expects fields exist in HTML)
-  window.openEdit = function(o){
-    const m = qs('#offerEditModal'); if(!m) return;
-    qs('#editId').value = o?.id ?? '';
-    qs('#editTitle').value = o?.title ?? '';
-    qs('#editOld').value = (o && o.original_price_cents!=null) ? (o.original_price_cents/100) : (o?.original_price ?? '');
-    qs('#editPrice').value = (o && o.price_cents!=null) ? (o.price_cents/100) : (o?.price ?? '');
-    qs('#editQty').value = o?.qty_total ?? '';
-    qs('#editExpires').value = (o?.expires_at ? String(o.expires_at).slice(0,16) : '');
-    qs('#editCategory').value = o?.category ?? '';
-    qs('#editDesc').value = o?.description ?? '';
-    m.style.display = 'block';
-  };
-  function closeEdit(){ const m = qs('#offerEditModal'); if(m) m.style.display='none'; }
-  window.closeEdit = closeEdit;
-
-  async function updateOffer(id, payload){
-    const base = apiBase().replace(/\/+$/,''); const R = encodeURIComponent(rid());
-    const headers = { 'X-Foody-Key': key(), 'Content-Type': 'application/json' };
-    const body = JSON.stringify(payload);
-    const bodyWithId = JSON.stringify({ id, restaurant_id: rid(), ...payload });
-    const chain = [
-      // Preferred detail routes
-      { url: `${base}/api/v1/merchant/offers/${id}?restaurant_id=${R}`, init:{ method:'PUT', headers, body } },
-      { url: `${base}/api/v1/merchant/offers/${id}`,                init:{ method:'PUT', headers, body } },
-      { url: `${base}/api/v1/merchant/offers`,                      init:{ method:'PUT', headers, body: bodyWithId } },
-      { url: `${base}/api/v1/merchant/offers/${id}?restaurant_id=${R}`, init:{ method:'PATCH', headers, body } },
-      { url: `${base}/api/v1/merchant/offers`,                      init:{ method:'PATCH', headers, body: bodyWithId } },
-      ,{ url: `${base}/api/v1/merchant/offers/update`, init:{ method:'POST', headers, body: bodyWithId } }
-  ,{ url: `${base}/api/v1/merchant/offer/update`,  init:{ method:'POST', headers, body: bodyWithId } }
-];
-    let last=null;
-    for (const opt of chain){
-      try{ const r = await fetch(opt.url, opt.init); if (r.ok) return; last=r.status; if (r.status===404||r.status===405) continue; throw new Error('HTTP '+r.status); }catch(e){ last=e.message; }
-    }
-    throw new Error(last||'update failed');
-  }
-
-  async function deleteOffer(id){
-    const base = apiBase().replace(/\/+$/,''); const R = encodeURIComponent(rid());
-    const headers = { 'X-Foody-Key': key(), 'Content-Type': 'application/json' };
-    const chain = [
-      // Preferred detail routes
-      { url: `${base}/api/v1/merchant/offers/${id}?restaurant_id=${R}`, init:{ method:'DELETE', headers } },
-      { url: `${base}/api/v1/merchant/offers/${id}`,                init:{ method:'DELETE', headers } },
-      { url: `${base}/api/v1/merchant/offers?id=${encodeURIComponent(id)}&restaurant_id=${R}`, init:{ method:'DELETE', headers } },
-      { url: `${base}/api/v1/merchant/offers`,                      init:{ method:'DELETE', headers, body: JSON.stringify({ id, restaurant_id: rid() }) } },
-      ,{ url: `${base}/api/v1/merchant/offers/update`, init:{ method:'POST', headers, body: bodyWithId } }
-  ,{ url: `${base}/api/v1/merchant/offer/update`,  init:{ method:'POST', headers, body: bodyWithId } }
-];
-    let last=null;
-    for (const opt of chain){
-      try{ const r = await fetch(opt.url, opt.init); if (r.ok) return; last=r.status; if (r.status===404||r.status===405) continue; throw new Error('HTTP '+r.status); }catch(e){ last=e.message; }
-    }
-    throw new Error(last||'delete failed');
-  }
-
-  function bindActions(){
-    const root = qs('#offerList'); if(!root) return;
-    if (root.dataset.actionsBound) return;
-    root.dataset.actionsBound = '1';
-    root.addEventListener('click', async (e)=>{
-      const a = e.target.closest('[data-action]'); if(!a) return;
-      const row = a.closest('.row'); const id = row?.getAttribute('data-offer-id'); if(!id) return;
-      const list = window.__offersCache || [];
-      const item = list.find(x => String(x.id)===String(id));
-      if (a.dataset.action==='edit-offer' || a.dataset.action==='edit'){ if(item) openEdit(item); return; }
-      if (a.dataset.action==='delete-offer' || a.dataset.action==='delete'){
-        if(!confirm('Удалить оффер?')) return;
-        try{ await deleteOffer(id); row.remove(); try{ window.refreshDashboard && refreshDashboard(); }catch(_){ } }catch(err){ alert('Не удалось удалить: ' + (err?.message||err)); }
-      }
-    });
-  }
-
-  function bindEditForm(){
-    const form = qs('#offerEditForm'); if(!form) return;
-    form.addEventListener('submit', async (ev)=>{
-      ev.preventDefault();
-      const id = qs('#editId').value;
-      const payload = {
-        title: (qs('#editTitle').value||null),
-        original_price: qs('#editOld').value ? Number(qs('#editOld').value) : null,
-        price: qs('#editPrice').value ? Number(qs('#editPrice').value) : null,
-        qty_total: qs('#editQty').value ? Number(qs('#editQty').value) : null,
-        expires_at: isoFromLocal(qs('#editExpires').value) || null,
-        category: qs('#editCategory').value || null,
-        description: qs('#editDesc').value || null,
-      };
-      try{ await updateOffer(id, payload); closeEdit(); if (window.refreshDashboard) { try { await refreshDashboard(); } catch(_){} } else { try { location.reload(); } catch(_){} } try{ await window.load?.(); }catch(_){ } }catch(err){ alert('Не удалось сохранить: '+(err?.message||err)); }
-    });
-    const cancel = qs('#offerEditCancel'); if (cancel) cancel.addEventListener('click', (e)=>{ e.preventDefault(); closeEdit(); });
-  }
-
-  // Re-augment UI after each render() from app.js
-  const mo = new MutationObserver(()=>{ ensureActionsUI(); });
-  ready(function(){ ensureActionsUI(); bindActions(); bindEditForm(); const list = qs('#offerList'); if (list) mo.observe(list, { childList:true, subtree:true }); });
+  document.addEventListener("click", (e)=>{
+    const b = e.target.closest("button, a"); if (!b) return;
+    const action = (b.getAttribute("data-action")||"").toLowerCase();
+    const txt = (b.textContent||"").toLowerCase();
+    const isEdit = action==="edit" || action==="edit-offer" || /редакт/i.test(txt);
+    const isDelete = action==="delete" || action==="delete-offer" || /удал/i.test(txt);
+    if (!isEdit && !isDelete) return;
+    e.preventDefault();
+    const id = findOfferId(b);
+    if (!id) return toast("ID оффера не найден", "err");
+    if (isEdit) return doEdit(id);
+    if (isDelete) return openDelete(id, doDelete);
+  }, { capture: true });
 })();

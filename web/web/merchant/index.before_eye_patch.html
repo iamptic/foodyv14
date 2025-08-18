@@ -52,11 +52,11 @@
 
     .w-full { width:100%; }
 
-    /* removed .pw-field */
-    /* removed .pw-field */
-    /* removed .pw-toggle */
-    /* removed .pw-toggle */
-    /* removed .pw-toggle */
+    .pw-field { position: relative; display: flex; align-items: center; }
+    .pw-field input[type="password"], .pw-field input[type="text"] { width:100%; padding-right: 42px; }
+    .pw-toggle { position: absolute; right: 8px; background: transparent; border: 0; cursor: pointer; font-size: 18px; line-height: 1; opacity: .75; }
+    .pw-toggle:hover { opacity: 1; }
+    .pw-toggle[aria-pressed="true"] { opacity: 1; }
 
     .work-presets { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
     .work-presets .chip { padding: 8px 10px; border-radius: 12px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); cursor:pointer; user-select:none; }
@@ -134,9 +134,9 @@
                 <input name="login" id="loginPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 900 000 00 00" required>
               </label>
               <label>Пароль
-                <div class="input--with-eye">
+                <div class="pw-field">
                   <input name="password" id="loginPassword" type="password" placeholder="••••••••" required>
-                  <button class="pwd-toggle" id="toggleLoginPw" type="button" aria-label="Показать пароль" aria-pressed="false"></button>
+                  <button class="pw-toggle" id="toggleLoginPw" type="button" aria-label="Показать пароль" aria-pressed="false">👁</button>
                 </div>
               </label>
               <div id="loginError" class="form-error hidden"></div>
@@ -175,9 +175,9 @@
                 <span class="chip" data-from="00:00" data-to="23:59">24/7</span>
               </div>
               <label class="full">Пароль
-                <div class="input--with-eye">
+                <div class="pw-field">
                   <input name="password" id="registerPassword" type="password" placeholder="мин. 6 символов" minlength="6" required>
-                  <button class="pwd-toggle" id="toggleRegisterPw" type="button" aria-label="Показать пароль" aria-pressed="false"></button>
+                  <button class="pw-toggle" id="toggleRegisterPw" type="button" aria-label="Показать пароль" aria-pressed="false">👁</button>
                 </div>
               </label>
               <div id="registerError" class="form-error hidden"></div>
@@ -334,15 +334,15 @@
           <div class="card-title">Сменить пароль</div>
           <form id="pwForm" class="form">
             <label>Текущий пароль
-              <div class="input--with-eye">
+              <div class="pw-field">
                 <input type="password" id="pwOld" placeholder="••••••••" required>
-                <button class="pwd-toggle" id="pwOldToggle" type="button" aria-label="Показать пароль" aria-pressed="false"></button>
+                <button class="pw-toggle" id="pwOldToggle" type="button" aria-label="Показать пароль" aria-pressed="false">👁</button>
               </div>
             </label>
             <label>Новый пароль
-              <div class="input--with-eye">
+              <div class="pw-field">
                 <input type="password" id="pwNew" placeholder="мин. 6 символов" minlength="6" required>
-                <button class="pwd-toggle" id="pwNewToggle" type="button" aria-label="Показать пароль" aria-pressed="false"></button>
+                <button class="pw-toggle" id="pwNewToggle" type="button" aria-label="Показать пароль" aria-pressed="false">👁</button>
               </div>
             </label>
             <label>Повтор нового пароля
