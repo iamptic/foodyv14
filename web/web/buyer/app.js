@@ -1,5 +1,5 @@
 /* global FOODY_API, QR_URL_BUILDER */
-const API = (typeof window !== "undefined" && window.FOODY_API) || "https://foodyback-production.up.railway.app";
+const API = (typeof window !== "undefined" && (window.foodyApi || window.FOODY_API)) || "https://foodyback-production.up.railway.app";
 const QR_BUILDER = (typeof window !== "undefined" && window.QR_URL_BUILDER) || (payload =>
   `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(payload)}`);
 
@@ -28,11 +28,11 @@ function renderSkeleton(n=6){
     const card=document.createElement("article");
     card.className="card";
     card.innerHTML=`<div class="photo skeleton skel-photo"></div>
-    <div class="info">
-      <div class="skeleton skel-line" style="width:70%"></div>
-      <div class="skeleton skel-line" style="width:90%"></div>
-      <div class="skeleton skel-line" style="width:40%"></div>
-    </div>`;
+      <div class="info">
+        <div class="skeleton skel-line" style="width:70%"></div>
+        <div class="skeleton skel-line" style="width:90%"></div>
+        <div class="skeleton skel-line" style="width:40%"></div>
+      </div>`;
     wrap.appendChild(card);
   }
 }
@@ -76,9 +76,7 @@ function renderOffers(offers){
         </div>
       </div>`;
 
-    const img=card.querySelector("img");
-    if(img){ img.addEventListener("error",()=>img.remove(),{once:true}); }
-
+    const img=card.querySelector("img"); if(img) img.addEventListener("error",()=>img.remove(),{once:true});
     frag.appendChild(card);
 
     if(expiresISO){
@@ -102,8 +100,7 @@ function startCountdown(elId, expiresAt, onExpire){
     const s = Math.floor(ms/1000), mm=String(Math.floor(s/60)).padStart(2,"0"), ss=String(s%60).padStart(2,"0");
     el.textContent = `${mm}:${ss}`;
   };
-  tick();
-  const int=setInterval(tick,1000);
+  tick(); const int=setInterval(tick,1000);
 }
 
 // data
@@ -148,30 +145,31 @@ function bindReserve(){
   });
 }
 
+// modal
 let modalEl, qrImgEl, qrFallbackEl, mOfferIdEl, mExpiresEl, copyBtnEl;
 function wireModal(){
-  modalEl=$("#modal"); qrImgEl=$("#qrImg"); qrFallbackEl=$("#qrFallback"); mOfferIdEl=$("#mOfferId"); mExpiresEl=$("#mExpires"); copyBtnEl=$("#copyBtn");
+  modalEl=$("#modal"); qrImgEl=$("#qrImg"); qrFallbackEl=$("#qrFallback");
+  mOfferIdEl=$("#mOfferId"); mExpiresEl=$("#mExpires"); copyBtnEl=$("#copyBtn");
   modalEl?.addEventListener("click",(e)=>{ if(e.target?.hasAttribute?.("data-close")) closeModal(); });
   document.addEventListener("keydown",e=>{ if(e.key==="Escape" && modalEl?.getAttribute("aria-hidden")==="false") closeModal(); });
   copyBtnEl?.addEventListener("click", async ()=>{
     const code = qrFallbackEl?.dataset?.code || "";
-    try{ if(code) await navigator.clipboard.writeText(code); copyBtnEl.textContent="Скопировано"; setTimeout(()=>copyBtnEl.textContent="Скопировать код",1200); }catch{}
+    try{ if(code) await navigator.clipboard.writeText(code);
+      copyBtnEl.textContent="Скопировано"; setTimeout(()=>copyBtnEl.textContent="Скопировать код",1200);
+    }catch{}
   });
 }
-
 function openReservationModal({ code="", offerId="—", expiresAt=null }={}){
   const payload = `FOODY|${offerId}|${code}`;
   const qrUrl = code ? QR_BUILDER(payload) : "";
 
-  let usedFallback=false;
+  let fallback=false;
   if(qrUrl){
     qrImgEl.onload=()=>{ qrImgEl.style.display="block"; qrFallbackEl.style.display="none"; };
-    qrImgEl.onerror=()=>{ usedFallback=true; qrImgEl.style.display="none"; qrFallbackEl.style.display="block"; };
+    qrImgEl.onerror=()=>{ fallback=true; qrImgEl.style.display="none"; qrFallbackEl.style.display="block"; };
     qrImgEl.src=qrUrl;
-  }else{
-    usedFallback=true;
-  }
-  if(usedFallback){ qrImgEl.removeAttribute("src"); qrImgEl.style.display="none"; qrFallbackEl.style.display="block"; }
+  } else { fallback=true; }
+  if(fallback){ qrImgEl.removeAttribute("src"); qrImgEl.style.display="none"; qrFallbackEl.style.display="block"; }
 
   qrFallbackEl.textContent = code || "—";
   qrFallbackEl.dataset.code = code || "";
