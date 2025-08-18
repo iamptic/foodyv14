@@ -5,12 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Foody — витрина</title>
   <style>
-    
     :root{
-      --bg:#0b0f14; --text:#e7e9ee; --sub:#a0a7b3; --muted:#8a9099;
-      --card:#111315; --line:rgba(255,255,255,.08); --brand:#00C27A; --ok:#12a150; --danger:#e5484d;
-      --shadow:0 10px 30px rgba(0,0,0,.40);
-      --radius:16px;
+      --bg:#fafafa; --text:#111; --sub:#666; --muted:#999;
+      --card:#fff; --line:#eee; --brand:#0a7cff; --ok:#12a150; --danger:#e5484d;
+      --shadow:0 6px 18px rgba(0,0,0,.06);
+      --radius:14px;
       --safe-b: env(safe-area-inset-bottom, 0);
     }
     *{box-sizing:border-box}
@@ -25,10 +24,14 @@
     }
     .brand{display:flex;gap:10px;align-items:center;font-weight:600}
     .page{max-width:1100px;margin:16px auto;padding:0 12px calc(20px + var(--safe-b))}
-    .btn{border-radius:12px;padding:10px 12px;border:1px solid var(--brand);background:var(--brand);color:#081A12;font-weight:700;cursor:pointer}
+    .btn{
+      -webkit-appearance:none;appearance:none;border:1px solid var(--brand);
+      color:#fff;background:var(--brand);padding:10px 14px;border-radius:10px;
+      cursor:pointer;font-weight:600
+    }
     .btn:hover{filter:brightness(.95)}
     .btn:disabled{opacity:.6;cursor:not-allowed}
-    .btn-secondary{background:transparent;color:var(--text);border:1px solid var(--line)}
+    .btn-secondary{background:#fff;color:var(--brand)}
     .input{
       width:100%;background:#fff;border:1px solid var(--line);padding:12px 14px;border-radius:10px;outline:none
     }
@@ -39,7 +42,7 @@
     @media (min-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
 
     .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;position:relative}
-    .photo{position:relative;aspect-ratio:4/3;background:#0f1217}
+    .photo{position:relative;aspect-ratio:4/3;background:#f3f3f3}
     .photo img{width:100%;height:100%;object-fit:cover;display:block}
     .badge{position:absolute;left:10px;top:10px;background:#111cc7;color:#fff;padding:6px 10px;border-radius:999px;font-size:13px;font-weight:700}
     .badge.badge--timer{right:10px;left:auto;background:#111;opacity:.9}
