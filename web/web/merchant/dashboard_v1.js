@@ -1,0 +1,1 @@
+(function(){console.log('Dashboard V1 placeholder')})();

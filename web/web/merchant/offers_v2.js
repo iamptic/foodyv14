@@ -1,0 +1,1 @@
+(function(){console.log('Offers V2 placeholder')})();
