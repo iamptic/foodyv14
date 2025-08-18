@@ -1,7 +1,0 @@
-
-/* Foody — Offer Create UI v3 (2025-08-17) */
-.foody3-note { font-size: 12px; opacity: .75; margin-top: 4px; }
-.foody3-summary { margin-top: 10px; font-weight: 600; font-size: 14px; }
-.foody3-warn { color: #b3261e; font-size: 12px; margin-top: 6px; }
-.foody3-inline { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.foody3-span-2 { grid-column: 1 / -1; }
