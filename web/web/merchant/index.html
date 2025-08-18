@@ -454,5 +454,20 @@
   </div>
 </div>
 
+
+<!-- Modal: подтвердить удаление (Foody) -->
+<div id="delete-modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal__backdrop" data-close-delete></div>
+  <div class="modal__sheet" role="document">
+    <button class="modal__close" type="button" title="Закрыть" data-close-delete>✕</button>
+    <h3 class="modal__title">Удалить оффер?</h3>
+    <p>Действие необратимо. Оффер #<span id="delete-offer-id">—</span> будет удалён.</p>
+    <div class="modal__actions">
+      <button class="btn btn-danger" id="delete-confirm">Удалить</button>
+      <button class="btn btn-secondary" data-close-delete>Отмена</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

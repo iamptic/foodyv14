@@ -536,12 +536,23 @@ section#auth .card :is(.card-title,.title,h1,h2,h3){
   #offerList .row .actions .btn { padding: 8px 10px; }
 }
 
-/* === Foody patch: unified buttons + red delete (2025-08-18) === */
+/* === Foody Modal + Danger Button (2025-08-18) === */
 .btn-danger {
-  background: var(--danger);
-  border: 1px solid var(--danger);
-  color: #ffffff;
+  background: #e5484d;
+  border: 1px solid #e5484d;
+  color: #fff;
   font-weight: 700;
 }
-.btn-danger:hover { filter: brightness(.96); }
-.btn-danger:active { transform: translateY(1px); }
+.btn-danger:hover{ filter: brightness(.96); }
+.btn-danger:active{ transform: translateY(1px); }
+
+.modal{position:fixed;inset:0;display:none;z-index:1000}
+.modal[aria-hidden="false"]{display:block}
+.modal__backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.modal__sheet{
+  position:relative;max-width:520px;margin:8vh auto;background:#fff;border-radius:16px;
+  padding:16px;border:1px solid #e9ebef;box-shadow:0 8px 24px rgba(20,22,26,.06)
+}
+.modal__close{position:absolute;right:10px;top:10px;border:none;background:transparent;font-size:20px;line-height:1;cursor:pointer}
+.modal__title{margin:4px 0 8px}
+.modal__actions{display:flex;gap:8px;justify-content:flex-end}
