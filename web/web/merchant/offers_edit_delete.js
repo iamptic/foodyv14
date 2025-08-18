@@ -1,146 +1,250 @@
-/*! Foody Merchant — Actions overlay (Edit/Delete) */
+/* Foody Merchant: Offers list + Edit/Delete (2025-08-18)
+   Works with index.html that includes #offerList table and #offerEditModal modal
+*/
+/* global window, localStorage */
 (function(){
-  function ready(fn){ if(document.readyState==='complete'||document.readyState==='interactive') setTimeout(fn,0); else document.addEventListener('DOMContentLoaded',fn); }
-  function qs(s,r=document){ return r.querySelector(s); }
-  function qsa(s,r=document){ return Array.from(r.querySelectorAll(s)); }
-  function apiBase(){ return (window.__FOODY__ && window.__FOODY__.FOODY_API) || window.foodyApi || ''; }
-  function rid(){ try { return localStorage.getItem('foody_restaurant_id') || ''; } catch(_){ return ''; } }
-  function key(){ try { return localStorage.getItem('foody_key') || ''; } catch(_){ return ''; } }
-  function isoFromLocal(v){
-  if(!v) return null;
-  try{
-    const s = v.trim().replace(' ', 'T');
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)){
-      const dt = new Date(s);
-      return new Date(dt.getTime() - dt.getTimezoneOffset()*60000).toISOString();
-    }
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) return d.toISOString();
-  }catch(_){ }
-  return v;
-}
-catch(_){ return v; } }
+  const API = (window.foodyApi || window.FOODY_API || "https://foodyback-production.up.railway.app").replace(/\/+$/,"");
+  const $ = (s, r=document)=>r.querySelector(s);
+  const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
 
-  // Augment table with Actions column if missing
-  function ensureActionsUI(){
-    const root = qs('#offerList'); if(!root) return;
-    const head = root.querySelector('.row.head');
-    if (head){
-      const last = head.children[head.children.length-1];
-      if (!last || last.textContent.trim()===''){
-        const dv = document.createElement('div'); dv.textContent = 'Действия'; head.appendChild(dv);
-      }
+  const listEl = document.getElementById("offerList");
+  if (!listEl) return;
+
+  // Toast helper (uses #toast container from index.html)
+  function toast(text, type="info"){
+    let root = document.getElementById("toast");
+    if (!root) {
+      root = document.createElement("div");
+      root.id = "toast";
+      document.body.appendChild(root);
     }
-    qsa('.row:not(.head)', root).forEach(row => {
-      let cell = row.querySelector('.actions');
-      if (!cell){
-        cell = document.createElement('div'); cell.className='actions';
-        cell.innerHTML = '<button class="btn" data-action="edit-offer">Редактировать</button><button class="btn btn-ghost" data-action="delete-offer">Удалить</button>';
-        row.appendChild(cell);
-      } else {
-        // ensure buttons present
-        if (!cell.querySelector('[data-action]')){
-          cell.innerHTML = '<button class="btn" data-action="edit-offer">Редактировать</button><button class="btn btn-ghost" data-action="delete-offer">Удалить</button>';
-        }
-      }
-      row.style.gridTemplateColumns = ''; // let CSS handle
-    });
+    const el = document.createElement("div");
+    el.className = "toast" + (type==="ok" ? "" : "");
+    el.textContent = text;
+    root.appendChild(el);
+    setTimeout(()=>{
+      el.style.opacity = "0";
+      setTimeout(()=>el.remove(), 300);
+    }, 2200);
   }
 
-  // Modal open/close (expects fields exist in HTML)
-  window.openEdit = function(o){
-    const m = qs('#offerEditModal'); if(!m) return;
-    qs('#editId').value = o?.id ?? '';
-    qs('#editTitle').value = o?.title ?? '';
-    qs('#editOld').value = (o && o.original_price_cents!=null) ? (o.original_price_cents/100) : (o?.original_price ?? '');
-    qs('#editPrice').value = (o && o.price_cents!=null) ? (o.price_cents/100) : (o?.price ?? '');
-    qs('#editQty').value = o?.qty_total ?? '';
-    qs('#editExpires').value = (o?.expires_at ? String(o.expires_at).slice(0,16) : '');
-    qs('#editCategory').value = o?.category ?? '';
-    qs('#editDesc').value = o?.description ?? '';
-    m.style.display = 'block';
+  function authHeaders(){
+    const token = localStorage.getItem("authToken") || localStorage.getItem("token") || "";
+    return token ? { "Authorization": "Bearer " + token } : {};
+  }
+
+  async function http(url, {method="GET", headers={}, body, timeout=12000}={}){
+    const ctl = new AbortController();
+    const t = setTimeout(()=>ctl.abort(new DOMException("Timeout","AbortError")), timeout);
+    try{
+      const res = await fetch(url, { method, headers, body, signal: ctl.signal });
+      return res;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  function fmtDate(iso){
+    if (!iso) return "—";
+    try{
+      const d = new Date(iso);
+      return d.toLocaleString("ru-RU", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
+    }catch{ return iso; }
+  }
+  function fmtMoney(n){
+    if (n==null || n==="") return "—";
+    try{ return new Intl.NumberFormat("ru-RU").format(Number(n)); } catch { return String(n); }
+  }
+
+  // Render skeleton and header
+  function renderSkeleton(){
+    listEl.innerHTML = `
+      <div class="row head">
+        <div>Название</div>
+        <div>Старая</div>
+        <div>Цена</div>
+        <div>Кол-во</div>
+        <div>Действует до</div>
+        <div class="nowrap" style="text-align:right">Действия</div>
+      </div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>`;
+  }
+
+  function renderRows(items){
+    const head = `
+      <div class="row head">
+        <div>Название</div>
+        <div>Старая</div>
+        <div>Цена</div>
+        <div>Кол-во</div>
+        <div>Действует до</div>
+        <div class="nowrap" style="text-align:right">Действия</div>
+      </div>`;
+
+    const rows = items.map(o => {
+      const id = o.id;
+      const title = (o.title || "Оффер");
+      const old = (o.original_price!=null ? fmtMoney(o.original_price) + " ₽" : "—");
+      const price = (o.price!=null ? fmtMoney(o.price) + " ₽" : "—");
+      const qty = (o.qty_total!=null ? o.qty_total : (o.stock!=null ? o.stock : "—"));
+      const exp = fmtDate(o.expires_at);
+      return `
+        <div class="row" data-id="${id}">
+          <div class="nowrap">${escapeHtml(title)}</div>
+          <div class="num">${old}</div>
+          <div class="num">${price}</div>
+          <div class="num">${qty}</div>
+          <div class="nowrap">${exp}</div>
+          <div class="actions">
+            <button class="btn btn-sm" data-action="edit" data-id="${id}">Редактировать</button>
+            <button class="btn btn-sm btn-danger" data-action="delete" data-id="${id}">Удалить</button>
+          </div>
+        </div>`;
+    }).join("");
+
+    listEl.innerHTML = head + rows;
+  }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])); }
+
+  // Load list
+  async function loadList(){
+    renderSkeleton();
+    try{
+      const res = await http(`${API}/api/v1/merchant/offers`, { headers: { "Accept":"application/json", ...authHeaders() } });
+      if (res.status === 401){
+        listEl.innerHTML = `<div class="row head"><div>Название</div><div>Старая</div><div>Цена</div><div>Кол-во</div><div>Действует до</div><div></div></div>
+          <div class="row"><div class="nowrap" style="grid-column: 1 / -1; color:var(--subtext)">Требуется вход. Перейдите во вкладку «Профиль».</div></div>`;
+        return;
+      }
+      if (!res.ok){ throw new Error(`HTTP ${res.status}`); }
+      const data = await res.json();
+      const items = Array.isArray(data) ? data : (data && data.items) || [];
+      renderRows(items);
+    }catch(err){
+      console.error("[offers] list error:", err);
+      listEl.innerHTML = `<div class="row head"><div>Название</div><div>Старая</div><div>Цена</div><div>Кол-во</div><div>Действует до</div><div></div></div>
+        <div class="row"><div class="nowrap" style="grid-column: 1 / -1; color:#f99">Не удалось загрузить список офферов.</div></div>`;
+    }
+  }
+
+  // Edit flow: open modal, prefill, submit
+  const editModal = document.getElementById("offerEditModal");
+  const editForm  = document.getElementById("offerEditForm");
+  const btnCancel = document.getElementById("offerEditCancel");
+  const inputMap = {
+    id:        document.getElementById("editId"),
+    title:     document.getElementById("editTitle"),
+    old:       document.getElementById("editOld"),
+    price:     document.getElementById("editPrice"),
+    qty:       document.getElementById("editQty"),
+    expires:   document.getElementById("editExpires"),
+    category:  document.getElementById("editCategory"),
+    desc:      document.getElementById("editDesc"),
   };
-  function closeEdit(){ const m = qs('#offerEditModal'); if(m) m.style.display='none'; }
-  window.closeEdit = closeEdit;
 
-  async function updateOffer(id, payload){
-    const base = apiBase().replace(/\/+$/,''); const R = encodeURIComponent(rid());
-    const headers = { 'X-Foody-Key': key(), 'Content-Type': 'application/json' };
-    const body = JSON.stringify(payload);
-    const bodyWithId = JSON.stringify({ id, restaurant_id: rid(), ...payload });
-    const chain = [
-      // Preferred detail routes
-      { url: `${base}/api/v1/merchant/offers/${id}?restaurant_id=${R}`, init:{ method:'PUT', headers, body } },
-      { url: `${base}/api/v1/merchant/offers/${id}`,                init:{ method:'PUT', headers, body } },
-      { url: `${base}/api/v1/merchant/offers`,                      init:{ method:'PUT', headers, body: bodyWithId } },
-      { url: `${base}/api/v1/merchant/offers/${id}?restaurant_id=${R}`, init:{ method:'PATCH', headers, body } },
-      { url: `${base}/api/v1/merchant/offers`,                      init:{ method:'PATCH', headers, body: bodyWithId } },
-      ,{ url: `${base}/api/v1/merchant/offers/update`, init:{ method:'POST', headers, body: bodyWithId } }
-  ,{ url: `${base}/api/v1/merchant/offer/update`,  init:{ method:'POST', headers, body: bodyWithId } }
-];
-    let last=null;
-    for (const opt of chain){
-      try{ const r = await fetch(opt.url, opt.init); if (r.ok) return; last=r.status; if (r.status===404||r.status===405) continue; throw new Error('HTTP '+r.status); }catch(e){ last=e.message; }
-    }
-    throw new Error(last||'update failed');
+  function showEditModal(show=true){
+    if (!editModal) return;
+    editModal.style.display = show ? "block" : "none";
+    document.body.style.overflow = show ? "hidden" : "";
   }
 
-  async function deleteOffer(id){
-    const base = apiBase().replace(/\/+$/,''); const R = encodeURIComponent(rid());
-    const headers = { 'X-Foody-Key': key(), 'Content-Type': 'application/json' };
-    const chain = [
-      // Preferred detail routes
-      { url: `${base}/api/v1/merchant/offers/${id}?restaurant_id=${R}`, init:{ method:'DELETE', headers } },
-      { url: `${base}/api/v1/merchant/offers/${id}`,                init:{ method:'DELETE', headers } },
-      { url: `${base}/api/v1/merchant/offers?id=${encodeURIComponent(id)}&restaurant_id=${R}`, init:{ method:'DELETE', headers } },
-      { url: `${base}/api/v1/merchant/offers`,                      init:{ method:'DELETE', headers, body: JSON.stringify({ id, restaurant_id: rid() }) } },
-      ,{ url: `${base}/api/v1/merchant/offers/update`, init:{ method:'POST', headers, body: bodyWithId } }
-  ,{ url: `${base}/api/v1/merchant/offer/update`,  init:{ method:'POST', headers, body: bodyWithId } }
-];
-    let last=null;
-    for (const opt of chain){
-      try{ const r = await fetch(opt.url, opt.init); if (r.ok) return; last=r.status; if (r.status===404||r.status===405) continue; throw new Error('HTTP '+r.status); }catch(e){ last=e.message; }
+  async function openEdit(id){
+    try{
+      const res = await http(`${API}/api/v1/merchant/offers/${id}`, { headers: { "Accept":"application/json", ...authHeaders() } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const o = await res.json();
+      inputMap.id.value    = o.id;
+      inputMap.title.value = o.title || "";
+      inputMap.old.value   = o.original_price ?? "";
+      inputMap.price.value = o.price ?? "";
+      inputMap.qty.value   = (o.qty_total ?? o.stock) ?? "";
+      inputMap.category.value = o.category || "other";
+      inputMap.desc.value  = o.description || "";
+      try{
+        inputMap.expires.value = o.expires_at ? new Date(o.expires_at).toISOString().slice(0,16) : "";
+      }catch{ inputMap.expires.value = ""; }
+      showEditModal(true);
+    }catch(e){
+      console.error("[offer] open edit error:", e);
+      toast("Не удалось открыть оффер для редактирования", "err");
     }
-    throw new Error(last||'delete failed');
   }
 
-  function bindActions(){
-    const root = qs('#offerList'); if(!root) return;
-    if (root.dataset.actionsBound) return;
-    root.dataset.actionsBound = '1';
-    root.addEventListener('click', async (e)=>{
-      const a = e.target.closest('[data-action]'); if(!a) return;
-      const row = a.closest('.row'); const id = row?.getAttribute('data-offer-id'); if(!id) return;
-      const list = window.__offersCache || [];
-      const item = list.find(x => String(x.id)===String(id));
-      if (a.dataset.action==='edit-offer' || a.dataset.action==='edit'){ if(item) openEdit(item); return; }
-      if (a.dataset.action==='delete-offer' || a.dataset.action==='delete'){
-        if(!confirm('Удалить оффер?')) return;
-        try{ await deleteOffer(id); row.remove(); try{ window.refreshDashboard && refreshDashboard(); }catch(_){ } }catch(err){ alert('Не удалось удалить: ' + (err?.message||err)); }
+  editForm && editForm.addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const id = inputMap.id.value;
+    const payload = {
+      title: inputMap.title.value.trim(),
+      original_price: inputMap.old.value ? Number(inputMap.old.value) : null,
+      price: inputMap.price.value ? Number(inputMap.price.value) : null,
+      qty_total: inputMap.qty.value ? Number(inputMap.qty.value) : null,
+      category: inputMap.category.value || "other",
+      description: inputMap.desc.value.trim() || null,
+      expires_at: inputMap.expires.value ? new Date(inputMap.expires.value).toISOString() : null,
+    };
+    const submitBtn = editForm.querySelector('button[type="submit"]');
+    if (submitBtn){ submitBtn.disabled = True = true; submitBtn.textContent = "Сохраняем…"; }
+    try{
+      const res = await fetch(`${API}/api/v1/merchant/offers/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok){
+        let t = "";
+        try{ t = await res.text(); }catch{}
+        throw new Error(t || `Ошибка ${res.status}`);
       }
-    });
+      toast("Оффер обновлён", "ok");
+      showEditModal(false);
+      loadList();
+    }catch(err){
+      console.error("[offer] save error:", err);
+      toast(err.message || "Не удалось сохранить оффер", "err");
+    }finally{
+      if (submitBtn){ submitBtn.disabled = false; submitBtn.textContent = "Сохранить"; }
+    }
+  });
+
+  btnCancel && btnCancel.addEventListener("click", ()=>showEditModal(false));
+  editModal && editModal.addEventListener("click", (e)=>{
+    if (e.target.classList.contains("modal-dim")) showEditModal(false);
+  });
+
+  // Delete
+  async function doDelete(id){
+    if (!confirm("Удалить оффер #" + id + "? Это действие необратимо.")) return;
+    try{
+      const res = await fetch(`${API}/api/v1/merchant/offers/${id}`, {
+        method: "DELETE",
+        headers: { ...authHeaders() }
+      });
+      if (!res.ok){
+        let t = "";
+        try{ t = await res.text(); }catch{}
+        throw new Error(t || `Ошибка ${res.status}`);
+      }
+      toast("Оффер удалён", "ok");
+      loadList();
+    }catch(err){
+      console.error("[offer] delete error:", err);
+      toast(err.message || "Не удалось удалить оффер", "err");
+    }
   }
 
-  function bindEditForm(){
-    const form = qs('#offerEditForm'); if(!form) return;
-    form.addEventListener('submit', async (ev)=>{
-      ev.preventDefault();
-      const id = qs('#editId').value;
-      const payload = {
-        title: (qs('#editTitle').value||null),
-        original_price: qs('#editOld').value ? Number(qs('#editOld').value) : null,
-        price: qs('#editPrice').value ? Number(qs('#editPrice').value) : null,
-        qty_total: qs('#editQty').value ? Number(qs('#editQty').value) : null,
-        expires_at: isoFromLocal(qs('#editExpires').value) || null,
-        category: qs('#editCategory').value || null,
-        description: qs('#editDesc').value || null,
-      };
-      try{ await updateOffer(id, payload); closeEdit(); if (window.refreshDashboard) { try { await refreshDashboard(); } catch(_){} } else { try { location.reload(); } catch(_){} } try{ await window.load?.(); }catch(_){ } }catch(err){ alert('Не удалось сохранить: '+(err?.message||err)); }
-    });
-    const cancel = qs('#offerEditCancel'); if (cancel) cancel.addEventListener('click', (e)=>{ e.preventDefault(); closeEdit(); });
-  }
+  // Delegated clicks on actions
+  listEl.addEventListener("click", (e)=>{
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const id = btn.getAttribute("data-id");
+    const action = btn.getAttribute("data-action");
+    if (action === "edit") return openEdit(id);
+    if (action === "delete") return doDelete(id);
+  });
 
-  // Re-augment UI after each render() from app.js
-  const mo = new MutationObserver(()=>{ ensureActionsUI(); });
-  ready(function(){ ensureActionsUI(); bindActions(); bindEditForm(); const list = qs('#offerList'); if (list) mo.observe(list, { childList:true, subtree:true }); });
+  // First load
+  loadList();
 })();

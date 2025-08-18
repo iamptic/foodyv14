@@ -535,3 +535,13 @@ section#auth .card :is(.card-title,.title,h1,h2,h3){
   #offerList .row { grid-template-columns: 1.6fr .9fr .7fr .8fr 1.1fr minmax(96px, max-content); }
   #offerList .row .actions .btn { padding: 8px 10px; }
 }
+
+/* === Foody patch: unified buttons + red delete (2025-08-18) === */
+.btn-danger {
+  background: var(--danger);
+  border: 1px solid var(--danger);
+  color: #ffffff;
+  font-weight: 700;
+}
+.btn-danger:hover { filter: brightness(.96); }
+.btn-danger:active { transform: translateY(1px); }
