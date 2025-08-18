@@ -6,16 +6,10 @@
   const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
 
   const listEl = document.getElementById("offerList") || document.getElementById("my-offers-list");
-  if (!listEl) return;
-
-  // Toast helper: supports #toast container, otherwise creates it
+  // Toast
   function ensureToastRoot(){
     let root = document.getElementById("toast");
-    if (!root){
-      root = document.createElement("div");
-      root.id = "toast";
-      document.body.appendChild(root);
-    }
+    if (!root){ root = document.createElement("div"); root.id = "toast"; document.body.appendChild(root); }
     return root;
   }
   function toast(text, type="info"){
@@ -24,7 +18,7 @@
     el.className = "toast" + (type==="ok" ? " toast--ok" : (type==="err" ? " toast--err" : ""));
     el.textContent = text;
     root.appendChild(el);
-    setTimeout(()=>{ el.style.opacity="0"; setTimeout(()=>el.remove(), 320); }, 2200);
+    setTimeout(()=>{ el.style.opacity="0"; el.style.transition="opacity .3s"; setTimeout(()=>el.remove(), 320); }, 2200);
   }
 
   function authHeaders(){
@@ -41,10 +35,8 @@
 
   function fmtDate(iso){
     if (!iso) return "—";
-    try{
-      const d = new Date(iso);
-      return d.toLocaleString("ru-RU", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
-    }catch{ return iso; }
+    try{ const d=new Date(iso); return d.toLocaleString("ru-RU", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"}); }
+    catch{ return iso; }
   }
   function fmtMoney(n){
     if (n==null || n==="") return "—";
@@ -52,8 +44,8 @@
   }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])); }
 
-  // Render
   function renderSkeleton(){
+    if (!listEl) return;
     listEl.innerHTML = `
       <div class="row head">
         <div>Название</div><div>Старая</div><div>Цена</div><div>Кол-во</div><div>Действует до</div><div class="nowrap" style="text-align:right">Действия</div>
@@ -61,6 +53,7 @@
       <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>`;
   }
   function renderRows(items){
+    if (!listEl) return;
     const head = `
       <div class="row head">
         <div>Название</div><div>Старая</div><div>Цена</div><div>Кол-во</div><div>Действует до</div><div class="nowrap" style="text-align:right">Действия</div>
@@ -89,6 +82,7 @@
   }
 
   async function loadList(){
+    if (!listEl) return;
     renderSkeleton();
     try{
       const res = await http(`${API}/api/v1/merchant/offers`, { headers: { "Accept":"application/json", ...authHeaders() } });
@@ -108,12 +102,12 @@
     }
   }
 
-  // Edit: prefill create-offer form
+  // Edit prefill into create-offer form
   function openCreateTab(){
-    const btn = document.querySelector('[data-tab-target="#create-offer"]') || document.querySelector('[data-tab="create-offer"]');
+    const btn = document.querySelector('[data-tab-target="#create-offer"]') || document.querySelector('[data-tab="create"]') || document.querySelector('[data-tab="create-offer"]');
     if (btn) { btn.click(); return; }
-    const sec = document.getElementById("create-offer");
-    if (sec) sec.scrollIntoView({behavior:"smooth"});
+    const sec = document.getElementById("create") || document.getElementById("create-offer");
+    if (sec) sec.scrollIntoView({ behavior:"smooth" });
   }
   function setValue(sel, val){ const el=$(sel); if (el) try{ el.value = val; }catch{} }
   async function openEdit(id){
@@ -140,38 +134,46 @@
     }
   }
 
-  // Delete with modal
-  const del = {
-    modal: document.getElementById("delete-modal"),
-    idSpan: document.getElementById("delete-offer-id"),
-    confirm: document.getElementById("delete-confirm"),
-  };
+  // Delete (modal)
+  const del = { modal: null, idSpan: null, confirm: null };
   function ensureDeleteModal(){
     if (del.modal) return;
-    const wrapper = document.createElement("div");
-    wrapper.innerHTML = `<div id="delete-modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
-      <div class="modal__backdrop" data-close-delete></div>
-      <div class="modal__sheet" role="document">
-        <button class="modal__close" type="button" title="Закрыть" data-close-delete>✕</button>
-        <h3 class="modal__title">Удалить оффер?</h3>
-        <p>Действие необратимо. Оффер #<span id="delete-offer-id">—</span> будет удалён.</p>
-        <div class="modal__actions">
-          <button class="btn btn-danger" id="delete-confirm">Удалить</button>
-          <button class="btn btn-secondary" data-close-delete>Отмена</button>
+    del.modal = document.getElementById("delete-modal");
+    if (!del.modal){
+      const wrap = document.createElement("div");
+      wrap.innerHTML = `<div id="delete-modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+        <div class="modal__backdrop" data-close-delete></div>
+        <div class="modal__sheet" role="document">
+          <button class="modal__close" type="button" title="Закрыть" data-close-delete>✕</button>
+          <h3 class="modal__title">Удалить оффер?</h3>
+          <p>Действие необратимо. Оффер #<span id="delete-offer-id">—</span> будет удалён.</p>
+          <div class="modal__actions">
+            <button class="btn btn-danger" id="delete-confirm">Удалить</button>
+            <button class="btn btn-secondary" data-close-delete>Отмена</button>
+          </div>
         </div>
-      </div>
-    </div>`;
-    document.body.appendChild(wrapper.firstElementChild);
+      </div>`;
+      document.body.appendChild(wrap.firstElementChild);
+    }
     del.modal = document.getElementById("delete-modal");
     del.idSpan = document.getElementById("delete-offer-id");
     del.confirm = document.getElementById("delete-confirm");
+
+    del.modal.addEventListener("click", (e)=>{
+      if (e.target && e.target.hasAttribute && e.target.hasAttribute("data-close-delete")) closeDeleteModal();
+    });
+    document.addEventListener("keydown", (e)=>{ if (e.key === "Escape") closeDeleteModal(); });
   }
   function openDeleteModal(id){
     ensureDeleteModal();
+    if (del.idSpan) del.idSpan.textContent = id;
+    if (del.confirm){
+      del.confirm.onclick = () => doDelete(id);
+      del.confirm.disabled = false;
+      del.confirm.textContent = "Удалить";
+    }
     del.modal.setAttribute("aria-hidden","false");
     document.body.style.overflow = "hidden";
-    if (del.idSpan) del.idSpan.textContent = id;
-    del.confirm.onclick = () => doDelete(id);
   }
   function closeDeleteModal(){
     if (!del.modal) return;
@@ -179,47 +181,51 @@
     document.body.style.overflow = "";
     if (del.confirm) del.confirm.onclick = null;
   }
-  document.addEventListener("click", (e)=>{
-    const t = e.target;
-    if (t && t.hasAttribute && t.hasAttribute("data-close-delete")) closeDeleteModal();
-  });
-  document.addEventListener("keydown", (e)=>{
-    if (e.key === "Escape") closeDeleteModal();
-  });
-
   async function doDelete(id){
     const btn = del.confirm;
     if (btn){ btn.disabled = true; btn.textContent = "Удаляем…"; }
     try{
-      const res = await fetch(`${API}/api/v1/merchant/offers/${id}`, {
-        method: "DELETE", headers: { ...authHeaders() }
-      });
+      const res = await fetch(`${API}/api/v1/merchant/offers/${id}`, { method:"DELETE", headers: { ...authHeaders() } });
       if (!res.ok){
-        let txt = "";
-        try{ txt = await res.text(); }catch{}
-        throw new Error(txt || `Ошибка ${res.status}`);
+        let t=""; try{ t = await res.text(); }catch{}
+        throw new Error(t || `Ошибка ${res.status}`);
       }
       closeDeleteModal();
       toast("Оффер удалён", "ok");
       loadList();
-    }catch(err){
-      console.error("[offer] delete error:", err);
-      toast(err.message || "Не удалось удалить оффер", "err");
+    }catch(e){
+      console.error("[offer] delete error:", e);
+      toast("Не удалось удалить оффер", "err");
     }finally{
       if (btn){ btn.disabled = false; btn.textContent = "Удалить"; }
     }
   }
 
-  // Delegation
-  listEl.addEventListener("click", (e)=>{
-    const b = e.target.closest("button[data-action]");
+  // Delegation (works with any layout)
+  document.addEventListener("click", (e)=>{
+    const b = e.target.closest("button, a");
     if (!b) return;
-    const id = b.getAttribute("data-id");
-    const action = b.getAttribute("data-action");
-    if (action === "edit") return openEdit(id);
-    if (action === "delete") return openDeleteModal(id);
-  });
+    const action = b.getAttribute("data-action") || (b.dataset ? b.dataset.action : "");
+    const txt = (b.textContent || "").toLowerCase();
+    const isEdit = action === "edit" || /редакт/i.test(txt);
+    const isDelete = action === "delete" || /удал/i.test(txt);
+    if (!isEdit && !isDelete) return;
 
-  // Go!
-  loadList();
+    e.preventDefault();
+    const row = b.closest("[data-id], [data-offer-id], [data-offer], tr, .row, .offer-row");
+    let id = (b.getAttribute("data-id") || b.getAttribute("data-offer-id") || "");
+    if (!id && row){
+      id = (row.getAttribute("data-id") || row.getAttribute("data-offer-id") || row.getAttribute("data-offer") || "");
+      const hidden = row.querySelector('input[name="id"], input[type="hidden"][name="offerId"]');
+      if (!id && hidden) id = hidden.value || hidden.getAttribute("data-offer-id") || "";
+    }
+    if (!id) return toast("Не найден ID оффера", "err");
+
+    if (isEdit) return openEdit(id);
+    if (isDelete) return openDeleteModal(id);
+  }, { capture:true });
+
+  // Initial load (if container exists)
+  if (listEl) loadList();
+  window.loadMyOffers = loadList; // expose for reuse
 })();

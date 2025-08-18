@@ -1,74 +1,40 @@
-
-/* Simple actions column + modal */
-#offerList .row { display:grid; grid-template-columns: 2fr 1fr 1fr 1fr 1.4fr 1fr; gap: 8px; align-items:center; }
-#offerList .row.head { font-weight:600; color:#444; }
-#offerList .row .actions { display:flex; gap:6px; justify-content:flex-end; }
-#offerList .btn-danger { background:#dc2626; color:#fff; border:0; }
-#offerList .btn-danger:hover { filter:brightness(0.95); }
-
-.modal { position:fixed; inset:0; z-index:50; }
-.modal[style*="display: none"] { display:none !important; }
-.modal .modal-dim { position:absolute; inset:0; background:rgba(0,0,0,.35); }
-.modal .modal-card { position:absolute; left:50%; top:10%; transform:translateX(-50%); width:min(720px, 92vw); background:#fff; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.2); padding:18px; }
-.modal .modal-title { font-size:18px; font-weight:600; margin-bottom:8px; }
-.modal .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:6px; }
-
-
-/* === Foody patch: dark modal & presets like create === */
-.modal .modal-card{
-  max-width: min(760px, 96%);
-  left: 50%; top: 6%;
-  transform: translateX(-50%);
-  background: var(--card);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  box-shadow: var(--shadow);
-  padding: 18px;
+/* === Foody Merchant Offers — actions & modal (2025-08-18) === */
+:root{
+  --brand:#0a7cff; --danger:#e5484d; --muted:#8a9099;
+  --card:#111315; --line:rgba(255,255,255,.08); --text:#e7e9ee;
 }
-.modal .modal-title{ color: var(--text); opacity:.9; }
-.modal .modal-dim{ background: rgba(0,0,0,.55); backdrop-filter: blur(2px); }
+/* Buttons */
+.btn{appearance:none;-webkit-appearance:none;cursor:pointer;border-radius:12px;
+  padding:8px 12px;border:1px solid var(--brand);background:var(--brand);color:#fff;font-weight:700}
+.btn:hover{filter:brightness(.96)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn-secondary{background:transparent;color:var(--brand)}
+.btn-danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn-sm{padding:6px 10px;font-size:14px}
 
-/* Presets (chips) */
-.work-presets { display:flex; gap:8px; flex-wrap:wrap; }
-.work-presets .chip {
-  padding: 8px 12px; border-radius: 12px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,.04);
-  cursor: pointer; user-select: none;
-}
-.work-presets .chip:hover { filter: brightness(1.05); }
-.work-presets .chip.active { background: rgba(0,194,122,.2); border-color: rgba(0,194,122,.35); }
+/* Table-like list */
+.table{display:block}
+.table .row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.5fr 1.5fr; gap:8px;align-items:center;padding:10px 8px;border-bottom:1px solid var(--line)}
+.table .row.head{font-weight:700;opacity:.8;position:sticky;top:0;background:rgba(0,0,0,.2);backdrop-filter:saturate(1.2) blur(2px)}
+.table .row .num{text-align:right}
+.table .row .actions{display:flex;gap:8px;justify-content:flex-end}
+.table .row .nowrap{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.skeleton{height:42px;border-radius:10px;background:linear-gradient(100deg, rgba(255,255,255,.06) 40%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.06) 60%) 0/200% 100%;animation:shimmer 1.2s infinite linear}
+@keyframes shimmer{to{background-position:200% 0}}
 
-/* === Patch: stabilize "Мои офферы" grid, prevent overlap === */
-#offerList .row { 
-  display: grid; 
-  grid-template-columns: minmax(140px,2fr) minmax(70px,.9fr) minmax(70px,.8fr) minmax(82px,.9fr) minmax(160px,1.2fr) minmax(120px, max-content);
-  gap: 8px; 
-  align-items: center;
-}
-#offerList .row > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-#offerList .row > div:nth-child(5) { white-space: nowrap; } /* date */
-#offerList .row .actions { display:flex; gap:6px; justify-content:flex-end; flex-wrap: nowrap; }
-#offerList .row .actions .btn { white-space: nowrap; }
+/* Modal */
+.modal{position:fixed;inset:0;display:none;z-index:1000}
+.modal[aria-hidden="false"]{display:block}
+.modal__backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.modal__sheet{position:relative;max-width:520px;margin:8vh auto;background:var(--card);border-radius:16px;
+  padding:16px;border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.45);color:var(--text)}
+.modal__close{position:absolute;right:10px;top:10px;border:none;background:transparent;font-size:20px;line-height:1;cursor:pointer;color:inherit}
+.modal__title{margin:4px 0 8px}
+.modal__actions{display:flex;gap:8px;justify-content:flex-end}
 
-@media (max-width: 560px){
-  #offerList .row { grid-template-columns: 1.4fr .8fr .7fr .8fr 1.1fr minmax(96px, max-content); }
-  #offerList .row .actions .btn { padding: 8px 10px; }
-}
-
-
-/* >>> Fix: stable layout for "Мои офферы" (prevents overlap) <<< */
-#offers #offerList .row {
-  display: grid;
-  grid-template-columns: minmax(150px,2fr) minmax(72px,.8fr) minmax(72px,.7fr) minmax(92px,.8fr) minmax(180px,1.2fr) minmax(136px, max-content);
-  gap: 8px;
-  align-items: center;
-}
-#offers #offerList .row > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#offers #offerList .row .actions { display:flex; gap:8px; justify-content:flex-end; flex-wrap: nowrap; }
-#offers #offerList .row .actions .btn { white-space: nowrap; }
-
-@media (max-width: 560px){
-  #offers #offerList .row { grid-template-columns: 1.6fr .8fr .7fr .8fr 1fr minmax(110px, max-content); }
-}
+/* Toast */
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:1200}
+#toast .toast{background:#14161a;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.25);font-weight:700;margin-top:8px}
+#toast .toast--ok{background:#12a150}
+#toast .toast--err{background:#e5484d}
