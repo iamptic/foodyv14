@@ -1,0 +1,26 @@
+/* Pretty Delete Modal + Buttons (Foody, 2025-08-18) */
+:root{
+  --danger:#e5484d; --text:#e7e9ee; --muted:#a0a7b3; --card:#111315; --line:rgba(255,255,255,.08);
+}
+/* Buttons (inherit your theme) */
+.btn{border-radius:12px;padding:10px 12px;border:1px solid transparent;cursor:pointer;font-weight:700}
+.btn-danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn-ghost{background:transparent;border-color:var(--line);color:var(--text)}
+.btn:disabled{opacity:.65;cursor:not-allowed}
+/* Modal */
+#delete-modal{position:fixed;inset:0;display:none;z-index:1200}
+#delete-modal[aria-hidden="false"]{display:block}
+#delete-modal .modal__backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px)}
+#delete-modal .modal__sheet{position:relative;max-width:520px;margin:8vh auto;padding:18px;
+  background:linear-gradient(180deg, rgba(26,28,33,.95), rgba(17,19,21,.95));
+  border:1px solid var(--line); border-radius:16px; color:var(--text);
+  box-shadow:0 20px 50px rgba(0,0,0,.5); overflow:hidden}
+#delete-modal .modal__head{display:flex;gap:12px;align-items:flex-start;margin-bottom:8px}
+#delete-modal .modal__icon{flex:0 0 40px; height:40px; width:40px; border-radius:50%;
+  display:grid;place-items:center; background:rgba(229,72,77,.15); color:var(--danger);}
+#delete-modal .modal__title{margin:2px 0 2px;font-size:18px;font-weight:800}
+#delete-modal .modal__text{margin:0;color:var(--muted)}
+#delete-modal .modal__close{position:absolute;right:10px;top:10px;border:none;background:transparent;
+  font-size:20px;line-height:1;color:var(--muted);cursor:pointer}
+#delete-modal .modal__close:hover{color:#fff}
+#delete-modal .modal__actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}

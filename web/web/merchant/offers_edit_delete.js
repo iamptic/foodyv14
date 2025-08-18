@@ -25,28 +25,7 @@
 
   async function http(url, init){ const r = await fetch(url, init); return r; }
 
-  function ensureDeleteModal(){
-    let modal = document.getElementById("delete-modal");
-    if (!modal){
-      const wrap = document.createElement("div");
-      wrap.innerHTML = `<div id="delete-modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
-        <div class="modal__backdrop" data-close-delete></div>
-        <div class="modal__sheet" role="document">
-          <button class="modal__close" type="button" title="Закрыть" data-close-delete>✕</button>
-          <h3 class="modal__title">Удалить оффер?</h3>
-          <p>Действие необратимо. Оффер #<span id="delete-offer-id">—</span> будет удалён.</p>
-          <div class="modal__actions">
-            <button class="btn btn-danger" id="delete-confirm">Удалить</button>
-            <button class="btn btn-secondary" data-close-delete>Отмена</button>
-          </div>
-        </div>
-      </div>`;
-      document.body.appendChild(wrap.firstElementChild);
-      modal = document.getElementById("delete-modal");
-      modal.addEventListener("click", (e)=>{ if (e.target && e.target.hasAttribute && e.target.hasAttribute("data-close-delete")) closeDelete(); });
-      document.addEventListener("keydown", (e)=>{ if (e.key==="Escape") closeDelete(); });
-    }
-    return modal;
+      return modal;
   }
   function openDelete(id, onConfirm){
     const m = ensureDeleteModal();
@@ -120,7 +99,72 @@
     finally{ if (btn){ btn.disabled = false; btn.textContent = "Удалить"; } }
   }
 
-  document.addEventListener("click", (e)=>{
+  
+  // === Pretty Delete Modal (inlined) ===
+  function ensureDeleteModal(){
+    let m = document.getElementById("delete-modal");
+    if (m) return m;
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `
+<div id="delete-modal" aria-hidden="true">
+  <div class="modal__backdrop" data-close-delete></div>
+  <div class="modal__sheet" role="dialog" aria-modal="true" aria-labelledby="del-title">
+    <button class="modal__close" data-close-delete title="Закрыть">✕</button>
+    <div class="modal__head">
+      <div class="modal__icon">🗑</div>
+      <div>
+        <div id="del-title" class="modal__title">Удалить оффер?</div>
+        <p class="modal__text">Оффер <b>#<span id="delete-offer-id">—</span></b> будет удалён безвозвратно.</p>
+      </div>
+    </div>
+    <div class="modal__actions">
+      <button id="delete-confirm" class="btn btn-danger">Удалить</button>
+      <button class="btn btn-ghost" data-close-delete>Отмена</button>
+    </div>
+  </div>
+</div>`;
+    document.body.appendChild(wrap.firstElementChild);
+    m = document.getElementById("delete-modal");
+    m.addEventListener("click", (e)=>{ if (e.target && e.target.hasAttribute && e.target.hasAttribute("data-close-delete")) closeDeleteModal(); });
+    document.addEventListener("keydown", (e)=>{ if (e.key==="Escape") closeDeleteModal(); });
+    return m;
+  }
+  function openDeleteModal(id, onConfirm){
+    const m = ensureDeleteModal();
+    const span = document.getElementById("delete-offer-id");
+    const btn = document.getElementById("delete-confirm");
+    if (span) span.textContent = id;
+    if (btn){ btn.onclick = () => onConfirm(id); btn.disabled = false; btn.textContent = "Удалить"; }
+    m.setAttribute("aria-hidden","false"); document.body.style.overflow="hidden";
+  }
+  function closeDeleteModal(){
+    const m = document.getElementById("delete-modal"); if (!m) return;
+    m.setAttribute("aria-hidden","true"); document.body.style.overflow="";
+    const btn = document.getElementById("delete-confirm"); if (btn) btn.onclick = null;
+  }
+  // Ultra-robust offer id detection
+  function findOfferIdFrom(el){
+    const dataKeys = ["id","offerId","offer","oid","offer_id","offerid"];
+    for (const k of dataKeys){ if (el.dataset && el.dataset[k]) return el.dataset[k]; }
+    for (const k of ["data-offer-id","data-id","data-offer","offer-id"]) { const v = el.getAttribute && el.getAttribute(k); if (v) return v; }
+    const row = el.closest && el.closest("[data-offer-id], [data-id], [data-offer], [data-oid], tr, .row, .offer-row, .offer-item");
+    if (row){
+      for (const k of ["data-offer-id","data-id","data-offer","data-oid","offer-id"]){
+        const v = row.getAttribute && row.getAttribute(k); if (v) return v;
+      }
+      const hidden = row.querySelector('input[type=\"hidden\"][name=\"id\"], input[type=\"hidden\"][name*=\"offer\" i], input[name=\"id\"]');
+      if (hidden) return hidden.value || hidden.getAttribute("data-offer-id") || "";
+      const link = row.querySelector('a[href*=\"/offers/\"]'); if (link){ const m = link.getAttribute(\"href\").match(/offers\/(\d+)/); if (m) return m[1]; }
+      for (const n of row.querySelectorAll(\"*\")){
+        for (const attr of n.attributes || []){
+          if (/offer.*id|^data-id$|^id$/i.test(attr.name) && /\\d/.test(attr.value)) return attr.value;
+        }
+      }
+    }
+    if (el.tagName === \"A\" && el.href){ const m = el.href.match(/offers\/(\d+)/); if (m) return m[1]; }
+    return \"\";
+  }
+document.addEventListener("click", (e)=>{
     const b = e.target.closest("button, a"); if (!b) return;
     const action = (b.getAttribute("data-action")||"").toLowerCase();
     const txt = (b.textContent||"").toLowerCase();
